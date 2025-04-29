@@ -42,7 +42,7 @@ func UserMessage(err error) string {
 }
 
 // Detail returns a specific detail associated with an Herror, if present.
-func Detail(err error, key string) (interface{}, bool) {
+func Detail(err error, key string) (any, bool) {
 	if herr, ok := AsHerror(err); ok && herr.Details != nil {
 		value, exists := herr.Details[key]
 		return value, exists
@@ -51,7 +51,7 @@ func Detail(err error, key string) (interface{}, bool) {
 }
 
 // AllDetails returns all details associated with an Herror, if present.
-func AllDetails(err error) map[string]interface{} {
+func AllDetails(err error) map[string]any {
 	if herr, ok := AsHerror(err); ok {
 		return herr.Details
 	}

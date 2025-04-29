@@ -15,7 +15,7 @@ type Herror struct {
 	Op      string // The operation being performed (e.g., "read file", "connect db")
 	Message string // A user-friendly message providing more context
 	Err     error  // The underlying error, if any
-	Details map[string]interface{} // Optional details for more specific context
+	Details map[string]any // Optional details for more specific context
 }
 
 func (e *Herror) Error() string {
@@ -38,7 +38,7 @@ func (e *Herror) Unwrap() error {
 }
 
 // NewHerror creates a new Herror.
-func NewHerror(op string, message string, err error, details map[string]interface{}) error {
+func NewHerror(op string, message string, err error, details map[string]any) error {
 	return &Herror{
 		Op:      op,
 		Message: message,
@@ -48,7 +48,7 @@ func NewHerror(op string, message string, err error, details map[string]interfac
 }
 
 // NewHerrorErrorf creates a new Herror with a formatted message.
-func NewHerrorErrorf(op string, format string, args ...interface{}) error {
+func NewHerrorErrorf(op string, format string, args ...any) error {
 	message := fmt.Sprintf(format, args...)
 	return &Herror{
 		Op:      op,
@@ -58,10 +58,10 @@ func NewHerrorErrorf(op string, format string, args ...interface{}) error {
 
 // WithDetail adds a key-value detail to an existing Herror. If the error is not an Herror,
 // a new Herror wrapping the original will be returned with the detail.
-func WithDetail(err error, key string, value interface{}) error {
+func WithDetail(err error, key string, value any) error {
 	if herr, ok := err.(*Herror); ok {
 		if herr.Details == nil {
-			herr.Details = make(map[string]interface{})
+			herr.Details = make(map[string]any)
 		}
 		herr.Details[key] = value
 		return herr
@@ -70,7 +70,7 @@ func WithDetail(err error, key string, value interface{}) error {
 		Op:      "unknown", // Or try to infer from err.Error() if needed
 		Message: err.Error(),
 		Err:     err,
-		Details: map[string]interface{}{key: value},
+		Details: map[string]any{key: value},
 	}
 }
 
