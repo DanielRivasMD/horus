@@ -11,10 +11,6 @@ import (
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// NotFoundAction is a function type that takes the directory path as input
-// and returns an error.
-type NotFoundAction func(string) error
-
 // CheckDirExist checks if a directory exists. If it doesn't, it executes
 // the provided notFoundAction. Any error from the stat operation or the
 // notFoundAction will be wrapped in an Herror.
