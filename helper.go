@@ -58,4 +58,12 @@ func AllDetails(err error) map[string]any {
 	return nil
 }
 
+// Category returns the category associated with an Herror, if present.
+func Category(err error) string {
+	if herr, ok := AsHerror(err); ok {
+		return herr.Category
+	}
+	return ""
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
