@@ -11,23 +11,12 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // LogNotFound returns a NotFoundAction function that logs a
-// custom warning message when a resource is not found, providing additional context
-// for debugging and structured logging.
+// custom warning message when a resource is not found.
 func LogNotFound(message string) NotFoundAction {
 	return func(address string) error {
-		logMessage := fmt.Sprintf(
-			"Warning: Data address '%s' not found. Context: %s",
-			address,
-			message,
-		)
-		fmt.Println(logMessage)
-		return NewCategorizedHerror(
-			"log not found",
-			"resource_error",
-			message,
-			nil,
-			map[string]any{"address": address},
-		)
+		fmt.Printf("Warning: Data address '%s' not found. Context: %s\n", address, message)
+		// Return nil to avoid propagating errors for purely informational actions
+		return nil
 	}
 }
 
