@@ -21,13 +21,31 @@ func CheckDirExist(dirPath string, notFoundAction NotFoundAction) error {
 			fmt.Printf("Directory '%s' does not exist. Executing custom action.\n", dirPath)
 			if notFoundAction != nil {
 				if actionErr := notFoundAction(dirPath); actionErr != nil {
-					return NewHerror("check directory", fmt.Sprintf("'%s' not found action failed", dirPath), actionErr, map[string]any{"path": dirPath})
+					return NewCategorizedHerror(
+						"check directory",
+						"directory_error",
+						fmt.Sprintf("'%s' not found action failed", dirPath),
+						actionErr,
+						map[string]any{"path": dirPath},
+					)
 				}
 				return nil // Action succeeded, no error to report for the check itself
 			}
-			return NewHerror("check directory", fmt.Sprintf("directory '%s' not found", dirPath), nil, map[string]any{"path": dirPath, "action": "none"})
+			return NewCategorizedHerror(
+				"check directory",
+				"directory_error",
+				fmt.Sprintf("directory '%s' not found", dirPath),
+				nil,
+				map[string]any{"path": dirPath, "action": "none"},
+			)
 		}
-		return NewHerror("check directory", fmt.Sprintf("error checking directory '%s'", dirPath), err, map[string]any{"path": dirPath})
+		return NewCategorizedHerror(
+			"check directory",
+			"directory_error",
+			fmt.Sprintf("error checking directory '%s'", dirPath),
+			err,
+			map[string]any{"path": dirPath},
+		)
 	}
 	fmt.Printf("Directory '%s' exists: '%s'\n", dirPath, dirPath)
 	return nil
