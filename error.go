@@ -12,12 +12,16 @@ import (
 
 // Herror represents a generalized error with added context.
 type Herror struct {
-	Op      string // The operation being performed (e.g., "read file", "connect db")
-	Message string // A user-friendly message providing more context
-	Err     error  // The underlying error, if any
-	Details map[string]any // Optional details for more specific context
+	Op       string         // The operation being performed (e.g., "read file", "connect db")
+	Message  string         // A user-friendly message providing more context
+	Err      error          // The underlying error, if any
+	Details  map[string]any // Optional details for more specific context
+	Category string         // Error category (e.g., validation, IO, etc.)
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Error generates a human-readable representation of the error.
 func (e *Herror) Error() string {
 	msg := fmt.Sprintf("operation '%s' failed", e.Op)
 	if e.Message != "" {
@@ -29,7 +33,15 @@ func (e *Herror) Error() string {
 	if len(e.Details) > 0 {
 		msg += fmt.Sprintf(" (details: %v)", e.Details)
 	}
+	if e.Category != "" {
+		msg += fmt.Sprintf(" [category: %s]", e.Category)
+	}
 	return msg
+}
+
+// Format generates a custom representation of the error using a formatter function.
+func (e *Herror) Format(formatter FormatterFunc) string {
+	return formatter(e)
 }
 
 // Unwrap provides access to the underlying error.
@@ -37,13 +49,26 @@ func (e *Herror) Unwrap() error {
 	return e.Err
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // NewHerror creates a new Herror.
-func NewHerror(op string, message string, err error, details map[string]any) error {
+func NewHerror(op, message string, err error, details map[string]any) error {
 	return &Herror{
 		Op:      op,
 		Message: message,
 		Err:     err,
 		Details: details,
+	}
+}
+
+// NewCategorizedHerror creates a new Herror with an error category.
+func NewCategorizedHerror(op, category, message string, err error, details map[string]any) error {
+	return &Herror{
+		Op:       op,
+		Message:  message,
+		Err:      err,
+		Details:  details,
+		Category: category,
 	}
 }
 
@@ -67,7 +92,7 @@ func WithDetail(err error, key string, value any) error {
 		return herr
 	}
 	return &Herror{
-		Op:      "unknown", // Or try to infer from err.Error() if needed
+		Op:      "unknown",
 		Message: err.Error(),
 		Err:     err,
 		Details: map[string]any{key: value},
