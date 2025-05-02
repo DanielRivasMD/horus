@@ -4,8 +4,9 @@ package horus
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// NotFoundAction is a function type that takes the directory path as input
-// and returns an error.
-type NotFoundAction func(string) error
+// NotFoundAction defines a custom action when a directory is missing.
+// This action should return (bool, error) where bool indicates whether the
+// missing directory was successfully handled and error carries any diagnostic details.
+type NotFoundAction func(string) (bool, error)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
