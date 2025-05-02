@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// package horus
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 package horus
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 import (
 	"fmt"
@@ -10,15 +10,17 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-
 // CheckDirExist checks if a directory exists. If it doesn't, it executes
 // the provided notFoundAction. Any error from the stat operation or the
 // notFoundAction will be wrapped in an Herror.
-func CheckDirExist(dirPath string, notFoundAction NotFoundAction) error {
+// The verbose flag enables optional logging.
+func CheckDirExist(dirPath string, notFoundAction NotFoundAction, verbose bool) error {
 	_, err := os.Stat(dirPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Printf("Directory '%s' does not exist. Executing custom action.\n", dirPath)
+			if verbose {
+				fmt.Printf("Directory '%s' does not exist. Executing custom action.\n", dirPath)
+			}
 			if notFoundAction != nil {
 				if actionErr := notFoundAction(dirPath); actionErr != nil {
 					return NewCategorizedHerror(
@@ -47,7 +49,9 @@ func CheckDirExist(dirPath string, notFoundAction NotFoundAction) error {
 			map[string]any{"path": dirPath},
 		)
 	}
-	fmt.Printf("Directory '%s' exists: '%s'\n", dirPath, dirPath)
+	if verbose {
+		fmt.Printf("Directory '%s' exists: '%s'\n", dirPath, dirPath)
+	}
 	return nil
 }
 
