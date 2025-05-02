@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// package horus
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 package horus
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 import (
 	"fmt"
@@ -10,11 +10,12 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// CheckDirExist checks if a directory exists. If it doesn't, it executes
-// the provided notFoundAction. Any error from the stat operation or the
-// notFoundAction will be wrapped in an Herror.
+
+// CheckDirExist checks if a directory exists. If it doesn't, it executes the provided
+// notFoundAction. It returns a tuple: a boolean indicating overall success (either the directory exists
+// or the custom action adequately handled the situation) and an error carrying detailed diagnostic context.
 // The verbose flag enables optional logging.
-func CheckDirExist(dirPath string, notFoundAction NotFoundAction, verbose bool) error {
+func CheckDirExist(dirPath string, notFoundAction NotFoundAction, verbose bool) (bool, error) {
 	_, err := os.Stat(dirPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -22,8 +23,10 @@ func CheckDirExist(dirPath string, notFoundAction NotFoundAction, verbose bool) 
 				fmt.Printf("Directory '%s' does not exist. Executing custom action.\n", dirPath)
 			}
 			if notFoundAction != nil {
-				if actionErr := notFoundAction(dirPath); actionErr != nil {
-					return NewCategorizedHerror(
+				ok, actionErr := notFoundAction(dirPath)
+				if actionErr != nil {
+					// Wrap the error with additional diagnostic context.
+					return false, NewCategorizedHerror(
 						"check directory",
 						"directory_error",
 						fmt.Sprintf("'%s' not found action failed", dirPath),
@@ -31,9 +34,11 @@ func CheckDirExist(dirPath string, notFoundAction NotFoundAction, verbose bool) 
 						map[string]any{"path": dirPath},
 					)
 				}
-				return nil // Action succeeded, no error to report for the check itself
+				// Let the custom action decide the boolean outcome.
+				return ok, nil
 			}
-			return NewCategorizedHerror(
+			// Directory not found and no custom action provided.
+			return false, NewCategorizedHerror(
 				"check directory",
 				"directory_error",
 				fmt.Sprintf("directory '%s' not found", dirPath),
@@ -41,7 +46,8 @@ func CheckDirExist(dirPath string, notFoundAction NotFoundAction, verbose bool) 
 				map[string]any{"path": dirPath, "action": "none"},
 			)
 		}
-		return NewCategorizedHerror(
+		// Some other error occurred during Stat.
+		return false, NewCategorizedHerror(
 			"check directory",
 			"directory_error",
 			fmt.Sprintf("error checking directory '%s'", dirPath),
@@ -50,9 +56,9 @@ func CheckDirExist(dirPath string, notFoundAction NotFoundAction, verbose bool) 
 		)
 	}
 	if verbose {
-		fmt.Printf("Directory '%s' exists: '%s'\n", dirPath, dirPath)
+		fmt.Printf("Directory '%s' exists.\n", dirPath)
 	}
-	return nil
+	return true, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
