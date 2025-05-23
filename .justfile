@@ -36,13 +36,13 @@ import '.just/go.conf'
 [group('go')]
 build: 
   @echo "\n\033[1;33mBuilding\033[0;37m...\n=================================================="
-  go build ./error.go ./helper.go ./checkDirExist.go ./checkFileExist.go ./notFoundAction.go ./logNotFound.go ./format.go ./createDir.go ./createFile.go
+  go build *.go
 
 ####################################################################################################
 
 # watch changes
 [group('go')]
 watch:
-  watchexec --clear --watch main.go --watch message --watch calendar -- 'just build'
+  watchexec --clear --watch horus.go --watch error.go --watch helper.go --watch format.go --watch notFoundAction.go --watch nullAction.go --watch logNotFound.go --watch checkError.go -- 'just build'
 
 ####################################################################################################
