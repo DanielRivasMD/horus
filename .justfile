@@ -43,6 +43,6 @@ build:
 # watch changes
 [group('go')]
 watch:
-  watchexec --clear --watch horus.go --watch error.go --watch helper.go --watch format.go --watch notFoundAction.go --watch nullAction.go --watch logNotFound.go --watch checkError.go -- 'just build'
+  watchexec --clear --watch horus.go --watch error.go --watch helper.go --watch format.go --watch notFoundAction.go --watch nullAction.go --watch logNotFound.go --watch checkErr.go -- 'just build'
 
 ####################################################################################################
