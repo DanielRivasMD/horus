@@ -7,8 +7,9 @@ package horus
 import (
 	"encoding/json"
 	"fmt"
-)
 
+	"github.com/ttacon/chalk"
+)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -25,6 +26,8 @@ func FormatError(err error, formatter FormatterFunc) string {
 	return err.Error() // Fallback to default error string if not an Herror
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // JSONFormatter generates a JSON representation of an Herror.
 func JSONFormatter(h *Herror) string {
 	jsonOutput, err := json.Marshal(h)
@@ -32,6 +35,14 @@ func JSONFormatter(h *Herror) string {
 		return fmt.Sprintf("error formatting: %v", err)
 	}
 	return string(jsonOutput)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// SimpleColoredFormatter generates a colored representation of an Herror using the chalk library.
+// You can extend this function to use different colors based on the error category.
+func SimpleColoredFormatter(h *Herror) string {
+	return chalk.Red.Color(fmt.Sprintf("ERROR: %s", h.Error()))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
