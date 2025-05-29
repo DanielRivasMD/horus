@@ -16,6 +16,8 @@ func IsHerror(err error) bool {
 	return errors.As(err, &target)
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // AsHerror tries to extract an Herror from the error chain.
 func AsHerror(err error) (*Herror, bool) {
 	var target *Herror
@@ -25,6 +27,8 @@ func AsHerror(err error) (*Herror, bool) {
 	return nil, false
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Operation returns the operation associated with an Herror, if present.
 func Operation(err error) string {
 	if herr, ok := AsHerror(err); ok {
@@ -33,6 +37,8 @@ func Operation(err error) string {
 	return ""
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // UserMessage returns the user-friendly message associated with an Herror, if present.
 func UserMessage(err error) string {
 	if herr, ok := AsHerror(err); ok {
@@ -40,6 +46,8 @@ func UserMessage(err error) string {
 	}
 	return ""
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Detail returns a specific detail associated with an Herror, if present.
 func Detail(err error, key string) (any, bool) {
@@ -50,6 +58,8 @@ func Detail(err error, key string) (any, bool) {
 	return nil, false
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // AllDetails returns all details associated with an Herror, if present.
 func AllDetails(err error) map[string]any {
 	if herr, ok := AsHerror(err); ok {
@@ -58,10 +68,22 @@ func AllDetails(err error) map[string]any {
 	return nil
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Category returns the category associated with an Herror, if present.
 func Category(err error) string {
 	if herr, ok := AsHerror(err); ok {
 		return herr.Category
+	}
+	return ""
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// StackTrace returns the formatted stack trace from an error if it's an Herror.
+func StackTrace(err error) string {
+	if herr, ok := AsHerror(err); ok {
+		return herr.StackTrace()
 	}
 	return ""
 }
