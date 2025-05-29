@@ -29,6 +29,7 @@ Key features include:
   - Categorizing errors (e.g., IO, Validation, etc.) for better organization.
   - Enriching error messages with custom details, making them more descriptive.
   - Providing utilities for formatting and inspecting errors.
+  - Capturing a stack trace at the time the error is created for improved debugging.
 
 By using horus, developers can ensure that runtime errors carry enough information
 for effective diagnosis and tracking, streamlining maintenance and troubleshooting
