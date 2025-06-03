@@ -124,7 +124,8 @@ func NewHerrorErrorf(op string, format string, args ...any) error {
 	}
 }
 
-// //////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Wrap wraps an existing error with additional context, capturing the stack trace.
 func Wrap(err error, op, message string) error {
 	if err == nil {
@@ -138,7 +139,8 @@ func Wrap(err error, op, message string) error {
 	}
 }
 
-// //////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // WithDetail adds a key-value detail to an existing Herror. If the error is not an Herror,
 // a new Herror wrapping the original will be returned with the detail.
 func WithDetail(err error, key string, value any) error {
@@ -156,6 +158,21 @@ func WithDetail(err error, key string, value any) error {
 		Details: map[string]any{key: value},
 		Stack:   captureStack(),
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Panic creates an Herror with context and a captured stack trace, logs the formatted message,
+// and then panics with the generated Herror.
+func Panic(op, message string) {
+	herr := &Herror{
+		Op:      op,
+		Message: message,
+		Stack:   captureStack(),
+	}
+	formattedMsg := formatPanic(op, message)
+	fmt.Println(formattedMsg)
+	panic(herr)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
