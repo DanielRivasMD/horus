@@ -170,7 +170,7 @@ func Panic(op, message string) {
 		Message: message,
 		Stack:   captureStack(),
 	}
-	formattedMsg := formatPanic(op, message)
+	formattedMsg := FormatPanic(op, message)
 	fmt.Println(formattedMsg)
 	panic(herr)
 }

@@ -47,8 +47,8 @@ func SimpleColoredFormatter(h *Herror) string {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// formatPanic returns a red-formatted panic message for the given operation and message.
-func formatPanic(op, message string) string {
+// FormatPanic returns a red-formatted panic message for the given operation and message.
+func FormatPanic(op, message string) string {
 	return chalk.Red.Color(fmt.Sprintf("Panic [%s]: %s", op, message))
 }
 
