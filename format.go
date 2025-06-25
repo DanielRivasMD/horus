@@ -49,7 +49,7 @@ func PseudoJSONFormatter(h *Herror) string {
 		color chalk.Color
 	}
 
-	// Collect all top-level fields (excluding Stack)
+	// Collect fields excluding Stack
 	fields := []field{
 		{"Op", fmt.Sprintf("\"%s\"", h.Op), chalk.Yellow},
 		{"Message", fmt.Sprintf("\"%s\"", h.Message), chalk.Yellow},
@@ -57,7 +57,7 @@ func PseudoJSONFormatter(h *Herror) string {
 		{"Category", fmt.Sprintf("\"%s\"", h.Category), chalk.Yellow},
 	}
 
-	// Flatten Details map into same format
+	// Include detail fields as pseudo top-level
 	var detailFields []field
 	for k, v := range h.Details {
 		detailFields = append(detailFields, field{
@@ -67,7 +67,7 @@ func PseudoJSONFormatter(h *Herror) string {
 		})
 	}
 
-	// Find longest key for padding
+	// Compute max width of plain (non-colored) key names
 	maxLen := 0
 	for _, f := range append(fields, detailFields...) {
 		if len(f.key) > maxLen {
@@ -75,22 +75,25 @@ func PseudoJSONFormatter(h *Herror) string {
 		}
 	}
 
-	// Format top-level fields
-	for _, f := range fields[:3] { // Op, Message, Err
-		fmt.Fprintf(&b, "%-*s %s,\n", maxLen+1, f.color.Color(f.key+":"), chalk.Red.Color(f.value))
+	// Print aligned top-level fields
+	for _, f := range fields[:3] {
+		paddedKey := fmt.Sprintf("%-*s", maxLen, f.key)
+		fmt.Fprintf(&b, "%s: %s,\n", f.color.Color(paddedKey), chalk.Red.Color(f.value))
 	}
 
-	// Format Details
+	// Print Details
 	b.WriteString(chalk.Yellow.Color("Details:") + "\n")
 	for _, f := range detailFields {
-		fmt.Fprintf(&b, "  %-*s %s,\n", maxLen+1, f.color.Color(f.key+":"), chalk.Red.Color(f.value))
+		paddedKey := fmt.Sprintf("  %-*s", maxLen, f.key)
+		fmt.Fprintf(&b, "%s: %s,\n", f.color.Color(paddedKey), chalk.Red.Color(f.value))
 	}
 	b.WriteString("\n")
 
-	// Category
-	fmt.Fprintf(&b, "%-*s %s,\n", maxLen+1, fields[3].color.Color(fields[3].key+":"), chalk.Red.Color(fields[3].value))
+	// Print Category
+	paddedKey := fmt.Sprintf("%-*s", maxLen, fields[3].key)
+	fmt.Fprintf(&b, "%s: %s,\n", fields[3].color.Color(paddedKey), chalk.Red.Color(fields[3].value))
 
-	// Format Stack (unaligned, indented)
+	// Stack remains unaligned
 	b.WriteString(chalk.Yellow.Color("Stack:") + "\n")
 	for _, addr := range h.Stack {
 		b.WriteString("  " + chalk.Red.Color(fmt.Sprintf("%v", addr)) + "\n")
