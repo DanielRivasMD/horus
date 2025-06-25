@@ -61,7 +61,7 @@ func (e *Herror) Unwrap() error {
 
 // StackTrace returns a formatted stack trace captured when the error was created.
 func (e *Herror) StackTrace() string {
-	if e.Stack == nil || len(e.Stack) == 0 {
+	if len(e.Stack) == 0 {
 		return ""
 	}
 	frames := runtime.CallersFrames(e.Stack)
@@ -78,15 +78,23 @@ func (e *Herror) StackTrace() string {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+func (h *Herror) HasStack() bool { return len(h.Stack) > 0 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // MarshalJSON ensures Err is emitted as its Error() string, not an object.
 func (h *Herror) MarshalJSON() ([]byte, error) {
-	// alias to avoid infinite recursion
 	type alias Herror
+	// if there’s no inner error, marshal it as empty string
+	errMsg := ""
+	if h.Err != nil {
+		errMsg = h.Err.Error()
+	}
 	return json.Marshal(&struct {
 		Err string `json:"Err"`
 		*alias
 	}{
-		Err:   h.Err.Error(),
+		Err:   errMsg,
 		alias: (*alias)(h),
 	})
 }
@@ -147,6 +155,16 @@ func Wrap(err error, op, message string) error {
 	if err == nil {
 		return nil
 	}
+	if herr, ok := AsHerror(err); ok {
+		return &Herror{
+			Op:       op,
+			Message:  message,
+			Err:      err,
+			Details:  herr.Details,
+			Category: herr.Category,
+			Stack:    captureStack(),
+		}
+	}
 	return &Herror{
 		Op:      op,
 		Message: message,
@@ -160,7 +178,7 @@ func Wrap(err error, op, message string) error {
 // WithDetail adds a key-value detail to an existing Herror. If the error is not an Herror,
 // a new Herror wrapping the original will be returned with the detail.
 func WithDetail(err error, key string, value any) error {
-	if herr, ok := err.(*Herror); ok {
+	if herr, ok := AsHerror(err); ok {
 		if herr.Details == nil {
 			herr.Details = make(map[string]any)
 		}
