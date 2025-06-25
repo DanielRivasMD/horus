@@ -14,13 +14,27 @@ type HErrorer interface {
 	Herror() *Herror
 }
 
+func (h *Herror) Herror() *Herror { return h }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+func IsHerror(err error) bool {
+	_, ok := AsHerror(err)
+	return ok
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // AsHerror tries to extract an Herror from the error chain.
 func AsHerror(err error) (*Herror, bool) {
+	// first try the standard library walk
 	var target *Herror
 	if errors.As(err, &target) {
 		return target, true
+	}
+	// then try the interface
+	if richer, ok := err.(HErrorer); ok {
+		return richer.Herror(), true
 	}
 	return nil, false
 }
@@ -60,10 +74,14 @@ func GetDetail(err error, key string) (any, bool) {
 
 // Details returns all details associated with an Herror, if present.
 func Details(err error) map[string]any {
-	if h, ok := AsHerror(err); ok && h.Details != nil {
-		return h.Details
+	if h, ok := AsHerror(err); ok {
+		out := make(map[string]any, len(h.Details))
+		for k, v := range h.Details {
+			out[k] = v
+		}
+		return out
 	}
-	return map[string]any{}
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
