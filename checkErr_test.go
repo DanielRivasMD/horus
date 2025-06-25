@@ -7,8 +7,6 @@ package horus
 import (
 	"bytes"
 	"errors"
-	"io"
-	"os"
 	"strings"
 	"testing"
 )
@@ -50,75 +48,78 @@ func TestRegisterErrorAndGetErrorRegistry(t *testing.T) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// captureOutput temporarily redirects stdout and returns what was printed.
-func captureOutput_checkErr(f func()) (string, int) {
-	// override exitFunc to capture code
+func TestCheckErr_DefaultBehavior(t *testing.T) {
+	// capture exit code
+	origExit := exitFunc
 	var code int
 	exitFunc = func(c int) { code = c }
+	defer func() { exitFunc = origExit }()
 
-	// capture stdout
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	// capture output
+	buf := &bytes.Buffer{}
 
-	// run
-	f()
+	// invoke CheckErr with a real error and our writer
+	CheckErr(
+		errors.New("boom"),
+		WithWriter(buf),
+	)
 
-	// restore stdout
-	w.Close()
-	os.Stdout = old
-
-	buf := new(bytes.Buffer)
-	io.Copy(buf, r)
-	return buf.String(), code
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-func TestCheckErr_DefaultBehavior(t *testing.T) {
-	out, code := captureOutput_checkErr(func() {
-		CheckErr(errors.New("boom"))
-	})
-
+	// exit code should be default 1
 	if code != 1 {
 		t.Errorf("exit code = %d; want 1", code)
 	}
-	if !strings.Contains(out, "boom") {
-		t.Errorf("output %q does not mention the original error", out)
-	}
-	if !strings.Contains(out, "check error") {
-		t.Errorf("output %q does not mention default op name", out)
-	}
-	if !strings.Contains(out, "runtime_error") {
-		t.Errorf("output %q does not mention default category", out)
+
+	out := stripANSI(buf.String())
+	for _, want := range []string{
+		"boom",          // original error
+		"check error",   // default op
+		"runtime_error", // default category
+		"severity",      // default details
+		"critical",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output %q missing %q", out, want)
+		}
 	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestCheckErr_WithOverrides(t *testing.T) {
-	out, code := captureOutput_checkErr(func() {
-		CheckErr(
-			errors.New("fail"),
-			WithOp("load-conf"),
-			WithCategory("cfg_err"),
-			WithMessage("couldn't load config"),
-			WithDetails(map[string]any{"path": "/etc/app.cfg"}),
-		)
-	})
+	// override exitFunc
+	origExit := exitFunc
+	var code int
+	exitFunc = func(c int) { code = c }
+	defer func() { exitFunc = origExit }()
 
-	if code != 1 {
-		t.Errorf("exit code = %d; want 1", code)
+	// capture output
+	buf := &bytes.Buffer{}
+
+	CheckErr(
+		errors.New("fail"),
+		WithWriter(buf),
+		WithExitCode(42),
+		WithOp("load-conf"),
+		WithCategory("cfg_err"),
+		WithMessage("couldn't load config"),
+		WithDetails(map[string]any{"path": "/etc/app.cfg"}),
+	)
+
+	if code != 42 {
+		t.Errorf("exit code = %d; want 42", code)
 	}
-	for _, want := range []string{
-		"load-conf",
-		"cfg_err",
-		"couldn't load config",
-		"path",
-		"/etc/app.cfg",
-	} {
+
+	out := stripANSI(buf.String())
+	wantLines := []string{
+		"Op       load-conf,",            // the overridden op
+		"Message  couldn't load config,", // the overridden message
+		"Err      fail,",                 // the original error
+		"path     /etc/app.cfg,",         // details line
+		"Category cfg_err,",              // the overridden category
+	}
+	for _, want := range wantLines {
 		if !strings.Contains(out, want) {
-			t.Errorf("override %q missing in output: %q", want, out)
+			t.Errorf("output missing %q; got:\n%s", want, out)
 		}
 	}
 }
