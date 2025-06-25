@@ -7,6 +7,7 @@ package horus
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/ttacon/chalk"
@@ -93,10 +94,23 @@ func PseudoJSONFormatter(h *Herror) string {
 	padded := fmt.Sprintf("%-*s", maxLen, fields[3].key)
 	fmt.Fprintf(&b, "%s %s,\n", fields[3].color.Color(padded), chalk.Red.Color(fields[3].value))
 
-	// Render Stack
+	// Render Stack (show file:line and function name)
 	b.WriteString(chalk.Yellow.Color("Stack") + "\n")
-	for _, addr := range h.Stack {
-		b.WriteString("  " + chalk.Dim.TextStyle(fmt.Sprintf("%v", addr)) + "\n")
+
+	// Turn saved program counters into frames
+	frames := runtime.CallersFrames(h.Stack)
+	for {
+		frame, more := frames.Next()
+		// e.g. "main.main() /home/daniel/project/main.go:42"
+		line := fmt.Sprintf("%s() %s:%d",
+			frame.Function,
+			frame.File,
+			frame.Line,
+		)
+		b.WriteString("  " + chalk.Dim.TextStyle(line) + "\n")
+		if !more {
+			break
+		}
 	}
 
 	return b.String()
