@@ -41,31 +41,27 @@ func TestAsHerrorAndOperation(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func TestOperationAndUserMessage(t *testing.T) {
 	plain := errors.New("nope")
 
-	// plain errors should return "", false
+	// Operation on plain error → "", false
 	if op, ok := Operation(plain); ok || op != "" {
 		t.Errorf("Operation(plain) = %q, %v; want \"\", false", op, ok)
 	}
-	if um := UserMessage(plain); um != "" {
-		t.Errorf("UserMessage(plain) = %q; want empty", um)
+	// UserMessage on plain error → "", false
+	if um, ok := UserMessage(plain); ok || um != "" {
+		t.Errorf("UserMessage(plain) = %q, %v; want \"\", false", um, ok)
 	}
 
-	// Herror should return its Op and true
+	// Herror should return its Op/Message and true
 	he := NewHerror("myOp", "myMsg", nil, nil)
-	op, ok := Operation(he)
-	if !ok || op != "myOp" {
+	if op, ok := Operation(he); !ok || op != "myOp" {
 		t.Errorf("Operation(Herror) = %q, %v; want %q, true", op, ok, "myOp")
 	}
-	if um := UserMessage(he); um != "myMsg" {
-		t.Errorf("UserMessage(Herror) = %q; want %q", um, "myMsg")
+	if um, ok := UserMessage(he); !ok || um != "myMsg" {
+		t.Errorf("UserMessage(Herror) = %q, %v; want %q, true", um, ok, "myMsg")
 	}
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestGetDetailAndDetails(t *testing.T) {
 	plain := errors.New("oops")
@@ -98,11 +94,9 @@ func TestGetDetailAndDetails(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func TestCategory(t *testing.T) {
 	plain := errors.New("err")
-	// plain errors → empty, false
+	// plain errors → "", false
 	if cat, ok := Category(plain); ok || cat != "" {
 		t.Errorf("Category(plain) = %q, %v; want \"\", false", cat, ok)
 	}
@@ -114,17 +108,19 @@ func TestCategory(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func TestStackTraceHelper(t *testing.T) {
 	plain := errors.New("err")
-	if st := StackTrace(plain); st != "" {
-		t.Errorf("StackTrace(plain) = %q; want empty", st)
+	// plain errors → "", false
+	if st, ok := StackTrace(plain); ok || st != "" {
+		t.Errorf("StackTrace(plain) = %q, %v; want \"\", false", st, ok)
 	}
 
 	// create an Herror so stack is captured
 	he := NewHerror("op", "", nil, nil)
-	trace := StackTrace(he)
+	trace, ok := StackTrace(he)
+	if !ok {
+		t.Error("StackTrace(Herror) ok should be true")
+	}
 	if trace == "" {
 		t.Error("StackTrace(Herror) should not be empty")
 	}
