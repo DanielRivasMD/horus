@@ -42,9 +42,12 @@ func JSONFormatter(h *Herror) string {
 
 func PseudoJSONFormatter(h *Herror) string {
 	var b strings.Builder
+	const indent = "          " // 10 spaces
 
 	writeField := func(key string, value string) {
-		fmt.Fprintf(&b, "%s: %s,\n", chalk.Yellow.Color(key), chalk.Red.Color(value))
+		fmt.Fprintf(&b, "%s: %s,\n",
+			chalk.Yellow.Color(key),
+			chalk.Red.Color(indent+value))
 	}
 
 	b.WriteString("")
@@ -58,7 +61,7 @@ func PseudoJSONFormatter(h *Herror) string {
 	for k, v := range h.Details {
 		fmt.Fprintf(&b, "  %s: %s,\n",
 			chalk.White.Color(k),
-			chalk.Red.Color(fmt.Sprintf("\"%v\"", v)))
+			chalk.Red.Color(indent+fmt.Sprintf("\"%v\"", v)))
 	}
 	b.WriteString("\n")
 
@@ -67,7 +70,8 @@ func PseudoJSONFormatter(h *Herror) string {
 	// Format Stack
 	b.WriteString(chalk.Yellow.Color("Stack") + ":\n")
 	for _, addr := range h.Stack {
-		fmt.Fprintf(&b, "  %v,\n", addr)
+		fmt.Fprintf(&b, "  %s\n",
+			chalk.Red.Color(indent+fmt.Sprintf("%v", addr)))
 	}
 	b.WriteString("\n")
 
