@@ -49,25 +49,25 @@ func PseudoJSONFormatter(h *Herror) string {
 		color chalk.Color
 	}
 
-	// Collect fields excluding Stack
+	// Collect top-level fields (excluding Stack)
 	fields := []field{
-		{"Op", fmt.Sprintf("\"%s\"", h.Op), chalk.Yellow},
-		{"Message", fmt.Sprintf("\"%s\"", h.Message), chalk.Yellow},
+		{"Op", h.Op, chalk.Yellow},
+		{"Message", h.Message, chalk.Yellow},
 		{"Err", fmt.Sprintf("%v", h.Err), chalk.Yellow},
-		{"Category", fmt.Sprintf("\"%s\"", h.Category), chalk.Yellow},
+		{"Category", h.Category, chalk.Yellow},
 	}
 
-	// Include detail fields as pseudo top-level
+	// Convert Details into aligned field list
 	var detailFields []field
 	for k, v := range h.Details {
 		detailFields = append(detailFields, field{
 			key:   k,
-			value: fmt.Sprintf("\"%v\"", v),
+			value: fmt.Sprintf("%v", v),
 			color: chalk.White,
 		})
 	}
 
-	// Compute max width of plain (non-colored) key names
+	// Compute max key width for padding
 	maxLen := 0
 	for _, f := range append(fields, detailFields...) {
 		if len(f.key) > maxLen {
@@ -75,24 +75,25 @@ func PseudoJSONFormatter(h *Herror) string {
 		}
 	}
 
-	// Print aligned top-level fields
+	// Render top-level fields (except Stack)
 	for _, f := range fields[:3] {
-		paddedKey := fmt.Sprintf("%-*s", maxLen, f.key)
-		fmt.Fprintf(&b, "%s %s,\n", f.color.Color(paddedKey), chalk.Red.Color(f.value))
+		padded := fmt.Sprintf("%-*s", maxLen, f.key)
+		fmt.Fprintf(&b, "%s %s,\n", f.color.Color(padded), chalk.Red.Color(f.value))
 	}
 
-	// Print Details
+	// Render Details
 	b.WriteString(chalk.Yellow.Color("Details") + "\n")
 	for _, f := range detailFields {
-		paddedKey := fmt.Sprintf("  %-*s", maxLen, f.key)
-		fmt.Fprintf(&b, "%s %s,\n", f.color.Color(paddedKey), chalk.Red.Color(f.value))
+		padded := fmt.Sprintf("  %-*s", maxLen, f.key)
+		fmt.Fprintf(&b, "%s %s,\n", f.color.Color(padded), chalk.Red.Color(f.value))
 	}
+	b.WriteString("\n")
 
-	// Print Category
-	paddedKey := fmt.Sprintf("%-*s", maxLen, fields[3].key)
-	fmt.Fprintf(&b, "%s %s,\n", fields[3].color.Color(paddedKey), chalk.Red.Color(fields[3].value))
+	// Render Category
+	padded := fmt.Sprintf("%-*s", maxLen, fields[3].key)
+	fmt.Fprintf(&b, "%s %s,\n", fields[3].color.Color(padded), chalk.Red.Color(fields[3].value))
 
-	// Stack remains unaligned
+	// Render Stack
 	b.WriteString(chalk.Yellow.Color("Stack") + "\n")
 	for _, addr := range h.Stack {
 		b.WriteString("  " + chalk.Dim.TextStyle(fmt.Sprintf("%v", addr)) + "\n")
