@@ -122,8 +122,14 @@ func CheckErr(err error, opts ...checkOpt) {
 		cfg.details,
 	)
 
-	// 5) Print with your PseudoJSONFormatter and exit
-	fmt.Println(FormatError(herr, PseudoJSONFormatter))
+	// 5) Print with PseudoJSONFormatter (or fall back to Error()) and exit
+	if he, ok := AsHerror(herr); ok {
+		// he is *Herror, so we can call the method or the formatter directly
+		fmt.Println(he.Format(PseudoJSONFormatter))
+	} else {
+		// should never happen here, but safe fallback
+		fmt.Println(herr.Error())
+	}
 	exitFunc(1)
 }
 
