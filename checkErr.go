@@ -11,6 +11,12 @@ import (
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// exitFunc is called by CheckErr to terminate the process.
+// You can override this in tests to capture the exit code.
+var exitFunc = os.Exit
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Global error registry to track error types (by category).
 var errorTypeRegistry = make(map[string]int)
 
@@ -118,7 +124,7 @@ func CheckErr(err error, opts ...checkOpt) {
 
 	// 5) Print with your PseudoJSONFormatter and exit
 	fmt.Println(FormatError(herr, PseudoJSONFormatter))
-	os.Exit(1)
+	exitFunc(1)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
