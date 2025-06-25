@@ -94,20 +94,19 @@ func PseudoJSONFormatter(h *Herror) string {
 	padded := fmt.Sprintf("%-*s", maxLen, fields[3].key)
 	fmt.Fprintf(&b, "%s %s,\n", fields[3].color.Color(padded), chalk.Red.Color(fields[3].value))
 
-	// Render Stack (show file:line and function name)
+	// Render Stack (show function in magenta, location dimmed)
 	b.WriteString(chalk.Yellow.Color("Stack") + "\n")
 
-	// Turn saved program counters into frames
 	frames := runtime.CallersFrames(h.Stack)
 	for {
 		frame, more := frames.Next()
-		// e.g. "main.main() /home/daniel/project/main.go:42"
-		line := fmt.Sprintf("%s() %s:%d",
-			frame.Function,
-			frame.File,
-			frame.Line,
-		)
-		b.WriteString("  " + chalk.Dim.TextStyle(line) + "\n")
+
+		// colorize parts separately
+		fn := chalk.Magenta.Color(frame.Function + "()")
+		loc := chalk.Dim.TextStyle(fmt.Sprintf(" %s:%d", frame.File, frame.Line))
+
+		b.WriteString("  " + fn + loc + "\n")
+
 		if !more {
 			break
 		}
