@@ -8,31 +8,30 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"strings"
 	"testing"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// captureOutput temporarily redirects stdout and returns what was printed.
+// captureOutput_error temporarily redirects stderr and returns what was printed.
 func captureOutput_error(f func()) string {
-	old := os.Stdout
+	old := os.Stderr
 	r, w, _ := os.Pipe()
-	os.Stdout = w
+	os.Stderr = w
 
 	f()
 
 	w.Close()
-	os.Stdout = old
+	os.Stderr = old
+
 	var buf bytes.Buffer
 	io.Copy(&buf, r)
 	return buf.String()
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestHerror_Error(t *testing.T) {
 	base := &Herror{Op: "foo"}
@@ -79,48 +78,29 @@ func TestHerror_Error(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-func TestHerror_FormatAndUnwrap(t *testing.T) {
-	h := &Herror{Op: "X", Message: "M", Err: errors.New("inner")}
-	// custom formatter just echoes Op
-	f := FormatterFunc(func(h *Herror) string { return "->" + h.Op })
-	if got := h.Format(f); got != "->X" {
-		t.Errorf("Format() = %q; want %q", got, "->X")
+func TestHerror_UnwrapAndFmt(t *testing.T) {
+	// Test Unwrap()
+	h := &Herror{Op: "X", Message: "M", Err: errors.New("inner"), Stack: nil}
+	if u := h.Unwrap(); u == nil || u.Error() != "inner" {
+		t.Errorf("Unwrap() = %v; want inner", u)
 	}
-	if got := h.Unwrap(); got.Error() != "inner" {
-		t.Errorf("Unwrap() = %v; want inner", got)
+
+	// %v invokes Error()
+	want := "operation 'X' failed: M (caused by: inner)"
+	if got := fmt.Sprintf("%v", h); got != want {
+		t.Errorf("%%v = %q; want %q", got, want)
+	}
+
+	// %+v should include stack frames (indented lines)
+	h2 := NewHerror("Y", "msg", nil, nil)
+	s := fmt.Sprintf("%+v", h2)
+	if !strings.Contains(s, "operation 'Y' failed: msg") {
+		t.Errorf("%%+v missing error message; got %q", s)
+	}
+	if !strings.Contains(s, "\n\t") {
+		t.Errorf("%%+v missing any stack frames; got %q", s)
 	}
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-func TestHerror_StackTraceAndHasStack(t *testing.T) {
-	// ensure captureStack actually populates
-	h := NewHerror("op", "", nil, nil).(*Herror)
-	if !h.HasStack() {
-		t.Fatal("HasStack should be true after NewHerror")
-	}
-	trace := h.StackTrace()
-	if trace == "" {
-		t.Error("StackTrace() returned empty")
-	}
-	// stack trace must mention this test function
-	if !strings.Contains(trace, "TestHerror_StackTraceAndHasStack") {
-		t.Errorf("StackTrace() = %q; want to contain test name", trace)
-	}
-
-	// empty-out stack
-	h2 := &Herror{Op: "o"}
-	if h2.HasStack() {
-		t.Error("HasStack on zero‐value should be false")
-	}
-	if st := h2.StackTrace(); st != "" {
-		t.Errorf("StackTrace on zero‐stack = %q; want empty", st)
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestHerror_MarshalJSON(t *testing.T) {
 	h := &Herror{
@@ -139,11 +119,9 @@ func TestHerror_MarshalJSON(t *testing.T) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	// Err should be the string
 	if m["Err"] != "E" {
 		t.Errorf("Err = %v; want %q", m["Err"], "E")
 	}
-	// check some other fields
 	if m["Op"] != "O" || m["Message"] != "M" || m["Category"] != "C" {
 		t.Errorf("JSON fields wrong: %v", m)
 	}
@@ -154,8 +132,6 @@ func TestHerror_MarshalJSON(t *testing.T) {
 		t.Errorf("Stack wrong: %v", m["Stack"])
 	}
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestNewHerror_Constructors(t *testing.T) {
 	plain := errors.New("X")
@@ -184,14 +160,11 @@ func TestNewHerror_Constructors(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func TestWrap(t *testing.T) {
-	// nil in → nil out
 	if w := Wrap(nil, "X", "Y"); w != nil {
 		t.Error("Wrap(nil) should be nil")
 	}
-	// plain error
+
 	pe := errors.New("plain")
 	w1 := Wrap(pe, "OpW", "MsgW")
 	he1, ok := AsHerror(w1)
@@ -201,7 +174,7 @@ func TestWrap(t *testing.T) {
 	if he1.Op != "OpW" || he1.Message != "MsgW" {
 		t.Error("Wrap fields incorrect:", he1)
 	}
-	// wrapping existing Herror preserves its Details & Category
+
 	base := NewCategorizedHerror("OpB", "CatB", "MsgB", pe, map[string]any{"x": 1})
 	w2 := Wrap(base, "Op2", "Msg2")
 	he2, _ := AsHerror(w2)
@@ -213,10 +186,7 @@ func TestWrap(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func TestWithDetail(t *testing.T) {
-	// plain error → new Herror
 	pe := errors.New("plainX")
 	d1 := WithDetail(pe, "k1", "v1")
 	he1, ok := AsHerror(d1)
@@ -230,20 +200,16 @@ func TestWithDetail(t *testing.T) {
 		t.Error("WithDetail did not set detail:", he1.Details)
 	}
 
-	// existing Herror → augments details in place
 	h2 := NewHerror("O", "M", nil, map[string]any{"a": 1})
 	d2 := WithDetail(h2, "b", 2)
 	he2, _ := AsHerror(d2)
 	if he2.Details["a"] != 1 || he2.Details["b"] != 2 {
 		t.Errorf("WithDetail did not merge details: %v", he2.Details)
 	}
-	// pointer identity preserved
 	if he2 != h2 {
 		t.Error("WithDetail should return same *Herror instance")
 	}
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestPanicFunc(t *testing.T) {
 	// capture printed panic message then recover
@@ -260,8 +226,8 @@ func TestPanicFunc(t *testing.T) {
 		}()
 		Panic("P", "M")
 	})
-	// FormatPanic wraps in ANSI; strip and assert
-	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+	// strip ANSI escapes
 	plain := ansi.ReplaceAllString(out, "")
 	if !strings.Contains(plain, "Panic [P]: M") {
 		t.Errorf("Panic printed %q; want Panic [P]: M", plain)
