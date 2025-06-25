@@ -55,7 +55,7 @@ func CheckErr(err error) {
 		)
 
 		// Log the error in a colored format for easier debugging.
-		fmt.Println(FormatError(herr, SimpleColoredFormatter))
+		fmt.Println(FormatError(herr, PrettyColoredJSONFormatter))
 		os.Exit(1) // Exit gracefully
 	}
 }

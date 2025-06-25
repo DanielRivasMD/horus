@@ -39,6 +39,38 @@ func JSONFormatter(h *Herror) string {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+func PrettyColoredJSONFormatter(h *Herror) string {
+	jsonBytes, err := json.MarshalIndent(h, "", "  ")
+	if err != nil {
+		return chalk.Red.Color(fmt.Sprintf("Error formatting JSON: %v", err))
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &raw); err != nil {
+		return chalk.Red.Color(fmt.Sprintf("Error parsing JSON: %v", err))
+	}
+
+	var result string
+	result += "{\n"
+	for key, value := range raw {
+		fieldName := chalk.White.Color(fmt.Sprintf("  \"%s\"", key))
+		var fieldValue string
+
+		switch v := value.(type) {
+		case string:
+			fieldValue = chalk.Red.Color(fmt.Sprintf("\"%s\"", v))
+		default:
+			marshaledVal, _ := json.MarshalIndent(v, "  ", "  ")
+			fieldValue = chalk.Red.Color(string(marshaledVal))
+		}
+		result += fmt.Sprintf("%s: %s,\n", fieldName, fieldValue)
+	}
+	result = result[:len(result)-2] + "\n}" // Remove last comma and close brace
+	return result
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // SimpleColoredFormatter generates a colored representation of an Herror using the chalk library.
 // You can extend this function to use different colors based on the error category.
 func SimpleColoredFormatter(h *Herror) string {
