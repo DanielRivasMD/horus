@@ -65,9 +65,9 @@ func PseudoJSONFormatter(h *Herror) string {
 	writeField("Category", fmt.Sprintf("\"%s\"", h.Category))
 
 	// Format Stack
-	b.WriteString("  " + chalk.Dim.TextStyle("Stack") + ":\n")
+	b.WriteString(chalk.Yellow.Color("Stack") + ":\n")
 	for _, addr := range h.Stack {
-		fmt.Fprintf(&b, "    %v,\n", addr)
+		fmt.Fprintf(&b, "  %v,\n", addr)
 	}
 	b.WriteString("\n")
 
