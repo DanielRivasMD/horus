@@ -39,34 +39,38 @@ func JSONFormatter(h *Herror) string {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func PrettyColoredJSONFormatter(h *Herror) string {
-	jsonBytes, err := json.MarshalIndent(h, "", "  ")
-	if err != nil {
-		return chalk.Red.Color(fmt.Sprintf("Error formatting JSON: %v", err))
+func PseudoJSONFormatter(h *Herror) string {
+	var b strings.Builder
+
+	writeField := func(key string, value string) {
+		fmt.Fprintf(&b, "  %s: %s,\n", chalk.White.Color(key), chalk.Red.Color(value))
 	}
 
-	var raw map[string]interface{}
-	if err := json.Unmarshal(jsonBytes, &raw); err != nil {
-		return chalk.Red.Color(fmt.Sprintf("Error parsing JSON: %v", err))
-	}
+	b.WriteString("")
 
-	var result string
-	result += "{\n"
-	for key, value := range raw {
-		fieldName := chalk.White.Color(fmt.Sprintf("  \"%s\"", key))
-		var fieldValue string
+	writeField("Op", fmt.Sprintf("\"%s\"", h.Op))
+	writeField("Message", fmt.Sprintf("\"%s\"", h.Message))
+	writeField("Err", fmt.Sprintf("%v", h.Err))
 
-		switch v := value.(type) {
-		case string:
-			fieldValue = chalk.Red.Color(fmt.Sprintf("\"%s\"", v))
-		default:
-			marshaledVal, _ := json.MarshalIndent(v, "  ", "  ")
-			fieldValue = chalk.Red.Color(string(marshaledVal))
-		}
-		result += fmt.Sprintf("%s: %s,\n", fieldName, fieldValue)
+	// Format Details map
+	b.WriteString("  " + chalk.White.Color("Details") + ": {\n")
+	for k, v := range h.Details {
+		fmt.Fprintf(&b, "    %s: %s,\n",
+			chalk.White.Color(k),
+			chalk.Red.Color(fmt.Sprintf("\"%v\"", v)))
 	}
-	result = result[:len(result)-2] + "\n}" // Remove last comma and close brace
-	return result
+	b.WriteString("  },\n")
+
+	writeField("Category", fmt.Sprintf("\"%s\"", h.Category))
+
+	// Format Stack
+	b.WriteString("  " + chalk.White.Color("Stack") + ": [\n")
+	for _, addr := range h.Stack {
+		fmt.Fprintf(&b, "    %v,\n", addr)
+	}
+	b.WriteString("  ]\n")
+
+	return b.String()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
