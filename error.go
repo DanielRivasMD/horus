@@ -6,7 +6,10 @@ package horus
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"os"
 	"runtime"
 	"strings"
 )
@@ -46,8 +49,15 @@ func (e *Herror) Error() string {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Format generates a custom representation of the error using a formatter function.
-func (e *Herror) Format(formatter FormatterFunc) string {
-	return formatter(e)
+func (e *Herror) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "%s\n%s", e.Error(), e.StackTrace())
+			return
+		}
+	}
+	io.WriteString(f, e.Error())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,21 +121,14 @@ func captureStack() []uintptr {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// NewHerror creates a new Herror.
-func NewHerror(op, message string, err error, details map[string]any) error {
-	return &Herror{
-		Op:      op,
-		Message: message,
-		Err:     err,
-		Details: details,
-		Stack:   captureStack(),
+func newHerror(
+	op, category, message string,
+	err error,
+	details map[string]any,
+) *Herror {
+	if details == nil {
+		details = make(map[string]any)
 	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// NewCategorizedHerror creates a new Herror with an error category.
-func NewCategorizedHerror(op, category, message string, err error, details map[string]any) error {
 	return &Herror{
 		Op:       op,
 		Message:  message,
@@ -136,16 +139,23 @@ func NewCategorizedHerror(op, category, message string, err error, details map[s
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+// NewHerror creates a new Herror (no category).
+func NewHerror(op, msg string, err error, details map[string]any) error {
+	return newHerror(op, "", msg, err, details)
+}
+
+// NewCategorizedHerror creates a new Herror with a category.
+func NewCategorizedHerror(
+	op, category, msg string,
+	err error,
+	details map[string]any,
+) error {
+	return newHerror(op, category, msg, err, details)
+}
 
 // NewHerrorErrorf creates a new Herror with a formatted message.
-func NewHerrorErrorf(op string, format string, args ...any) error {
-	message := fmt.Sprintf(format, args...)
-	return &Herror{
-		Op:      op,
-		Message: message,
-		Stack:   captureStack(),
-	}
+func NewHerrorErrorf(op, fmtStr string, args ...any) error {
+	return newHerror(op, "", fmt.Sprintf(fmtStr, args...), nil, nil)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -177,36 +187,39 @@ func Wrap(err error, op, message string) error {
 
 // WithDetail adds a key-value detail to an existing Herror. If the error is not an Herror,
 // a new Herror wrapping the original will be returned with the detail.
-func WithDetail(err error, key string, value any) error {
+func WithDetail(err error, k string, v any) error {
 	if herr, ok := AsHerror(err); ok {
-		if herr.Details == nil {
-			herr.Details = make(map[string]any)
+		copy := make(map[string]any, len(herr.Details)+1)
+		for kk, vv := range herr.Details {
+			copy[kk] = vv
 		}
-		herr.Details[key] = value
+		copy[k] = v
+		herr.Details = copy
 		return herr
 	}
-	return &Herror{
-		Op:      "unknown",
-		Message: err.Error(),
-		Err:     err,
-		Details: map[string]any{key: value},
-		Stack:   captureStack(),
-	}
+	return newHerror("unknown", "", err.Error(), err, map[string]any{k: v})
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Panic creates an Herror with context and a captured stack trace, logs the formatted message,
 // and then panics with the generated Herror.
-func Panic(op, message string) {
-	herr := &Herror{
-		Op:      op,
-		Message: message,
-		Stack:   captureStack(),
-	}
-	formattedMsg := FormatPanic(op, message)
-	fmt.Println(formattedMsg)
+func Panic(op, msg string) {
+	herr := newHerror(op, "", msg, nil, nil)
+	fmt.Fprintln(os.Stderr, FormatPanic(op, msg))
 	panic(herr)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+func RootCause(err error) error {
+	for {
+		next := errors.Unwrap(err)
+		if next == nil {
+			return err
+		}
+		err = next
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
