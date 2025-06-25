@@ -6,6 +6,7 @@ package horus
 
 import (
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -14,6 +15,16 @@ import (
 // exitFunc is called by CheckErr to terminate the process.
 // You can override this in tests to capture the exit code.
 var exitFunc = os.Exit
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+type CheckConfig struct {
+	Out       io.Writer
+	ExitCode  int
+	Formatter FormatterFunc
+}
+
+var exit = os.Exit
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -51,11 +62,14 @@ func GetErrorRegistry() map[string]int {
 type checkOpt func(*checkParams)
 
 // checkParams holds all customizable fields for CheckErr.
+
 type checkParams struct {
-	op       string         // operation name
-	category string         // error category code
-	message  string         // human-readable message
-	details  map[string]any // arbitrary metadata
+	op       string
+	category string
+	message  string
+	details  map[string]any
+	writer   io.Writer
+	exitCode int
 }
 
 // WithOp overrides the default operation name.
@@ -86,15 +100,30 @@ func WithDetails(d map[string]any) checkOpt {
 	}
 }
 
-// CheckErr registers, wraps, formats and logs a fatal error via Horus,
-// applying any number of functional options to customize its fields.
-// On non-nil err it exits the process with code 1.
+// WithWriter lets you redirect the output (for tests, etc).
+func WithWriter(w io.Writer) checkOpt {
+	return func(c *checkParams) {
+		c.writer = w
+	}
+}
+
+// WithExitCode lets you override the exit code.
+func WithExitCode(code int) checkOpt {
+	return func(c *checkParams) {
+		c.exitCode = code
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// CheckErr registers, wraps, formats and logs a fatal error via Horus.
+// On non-nil err it exits the process with code (default: 1).
 func CheckErr(err error, opts ...checkOpt) {
 	if err == nil {
 		return
 	}
 
-	// 1) Track error metrics
+	// 1) Metrics, instrumentation
 	RegisterError(err)
 
 	// 2) Default parameters
@@ -104,8 +133,10 @@ func CheckErr(err error, opts ...checkOpt) {
 		message:  "An error occurred during execution",
 		details: map[string]any{
 			"severity": "critical",
-			"location": "checkErr function",
+			"location": "checkErr",
 		},
+		writer:   os.Stderr,
+		exitCode: 1,
 	}
 
 	// 3) Apply any overrides
@@ -113,7 +144,7 @@ func CheckErr(err error, opts ...checkOpt) {
 		opt(&cfg)
 	}
 
-	// 4) Build the Horus error
+	// 4) Build the rich Herror
 	herr := NewCategorizedHerror(
 		cfg.op,
 		cfg.category,
@@ -122,15 +153,18 @@ func CheckErr(err error, opts ...checkOpt) {
 		cfg.details,
 	)
 
-	// 5) Print with PseudoJSONFormatter (or fall back to Error()) and exit
+	// 5) Format & print
+	//    We know NewCategorizedHerror always returns *Herror under the hood,
+	//    but we still AsHerror for safety.
 	if he, ok := AsHerror(herr); ok {
-		// he is *Herror, so we can call the method or the formatter directly
-		fmt.Println(he.Format(PseudoJSONFormatter))
+		fmt.Fprintln(cfg.writer, PseudoJSONFormatter(he))
 	} else {
-		// should never happen here, but safe fallback
-		fmt.Println(herr.Error())
+		// fallback, should never happen
+		fmt.Fprintln(cfg.writer, herr.Error())
 	}
-	exitFunc(1)
+
+	// 6) Exit
+	exitFunc(cfg.exitCode)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
