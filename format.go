@@ -20,16 +20,6 @@ type FormatterFunc func(*Herror) string
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// FormatError formats the Herror using a custom formatter function.
-func FormatError(err error, formatter FormatterFunc) string {
-	if herr, ok := AsHerror(err); ok {
-		return formatter(herr)
-	}
-	return err.Error() // Fallback to default error string if not an Herror
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 // JSONFormatter generates a JSON representation of an Herror.
 func JSONFormatter(h *Herror) string {
 	jsonOutput, err := json.Marshal(h)

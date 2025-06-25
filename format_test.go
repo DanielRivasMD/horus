@@ -25,25 +25,6 @@ func stripANSI(s string) string {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func TestFormatError(t *testing.T) {
-	// 1) non-Herror: should fall back to err.Error()
-	err := errors.New("plain error")
-	got := FormatError(err, PseudoJSONFormatter)
-	if got != "plain error" {
-		t.Errorf("FormatError(non-Herror) = %q; want %q", got, "plain error")
-	}
-
-	// 2) Herror: should call the formatter
-	herr := NewCategorizedHerror("op", "cat", "msg", errors.New("inner"), nil)
-	const marker = "CUSTOM"
-	got = FormatError(herr, func(h *Herror) string { return marker })
-	if got != marker {
-		t.Errorf("FormatError(Herror) = %q; want %q", got, marker)
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func TestJSONFormatter(t *testing.T) {
 	original := &Herror{
 		Op:       "myOp",
