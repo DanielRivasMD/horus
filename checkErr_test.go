@@ -50,7 +50,8 @@ func TestRegisterErrorAndGetErrorRegistry(t *testing.T) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func captureOutput(f func()) (string, int) {
+// captureOutput temporarily redirects stdout and returns what was printed.
+func captureOutput_checkErr(f func()) (string, int) {
 	// override exitFunc to capture code
 	var code int
 	exitFunc = func(c int) { code = c }
@@ -75,7 +76,7 @@ func captureOutput(f func()) (string, int) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestCheckErr_DefaultBehavior(t *testing.T) {
-	out, code := captureOutput(func() {
+	out, code := captureOutput_checkErr(func() {
 		CheckErr(errors.New("boom"))
 	})
 
@@ -96,7 +97,7 @@ func TestCheckErr_DefaultBehavior(t *testing.T) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestCheckErr_WithOverrides(t *testing.T) {
-	out, code := captureOutput(func() {
+	out, code := captureOutput_checkErr(func() {
 		CheckErr(
 			errors.New("fail"),
 			WithOp("load-conf"),
