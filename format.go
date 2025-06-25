@@ -42,36 +42,53 @@ func JSONFormatter(h *Herror) string {
 
 func PseudoJSONFormatter(h *Herror) string {
 	var b strings.Builder
-	const indent = "          " // 10 spaces
 
-	writeField := func(key string, value string) {
-		fmt.Fprintf(&b, "%s: %s,\n",
-			chalk.Yellow.Color(key),
-			chalk.Red.Color(indent+value))
+	type field struct {
+		key   string
+		value string
 	}
 
-	b.WriteString("")
+	// Collect top-level fields
+	fields := []field{
+		{"Op", fmt.Sprintf("\"%s\"", h.Op)},
+		{"Message", fmt.Sprintf("\"%s\"", h.Message)},
+		{"Err", fmt.Sprintf("%v", h.Err)},
+		{"Category", fmt.Sprintf("\"%s\"", h.Category)},
+	}
 
-	writeField("Op", fmt.Sprintf("\"%s\"", h.Op))
-	writeField("Message", fmt.Sprintf("\"%s\"", h.Message))
-	writeField("Err", fmt.Sprintf("%v", h.Err))
+	// Calculate maximum width for alignment
+	maxWidth := 0
+	for _, f := range fields {
+		if len(f.key) > maxWidth {
+			maxWidth = len(f.key)
+		}
+	}
+	for k := range h.Details {
+		if len(k) > maxWidth-2 { // +2 because of indent
+			maxWidth = len(k) + 2
+		}
+	}
 
-	// Format Details map
-	b.WriteString(chalk.Yellow.Color("Details") + ":\n")
+	// Format top-level fields
+	for _, f := range fields[:3] { // Op, Message, Err
+		fmt.Fprintf(&b, "%-*s%s%s,\n", maxWidth+2, chalk.Yellow.Color(f.key+":"), " ", chalk.Red.Color(f.value))
+	}
+
+	// Format Details
+	b.WriteString(chalk.Yellow.Color("Details:") + "\n")
 	for k, v := range h.Details {
-		fmt.Fprintf(&b, "  %s: %s,\n",
-			chalk.White.Color(k),
-			chalk.Red.Color(indent+fmt.Sprintf("\"%v\"", v)))
+		key := fmt.Sprintf("  %s:", k)
+		fmt.Fprintf(&b, "%-*s%s%s,\n", maxWidth+2, chalk.White.Color(key), " ", chalk.Red.Color(fmt.Sprintf("\"%v\"", v)))
 	}
 	b.WriteString("\n")
 
-	writeField("Category", fmt.Sprintf("\"%s\"", h.Category))
+	// Category
+	fmt.Fprintf(&b, "%-*s%s%s,\n", maxWidth+2, chalk.Yellow.Color("Category:"), " ", chalk.Red.Color(fields[3].value))
 
-	// Format Stack
-	b.WriteString(chalk.Yellow.Color("Stack") + ":\n")
+	// Stack
+	b.WriteString(chalk.Yellow.Color("Stack:") + "\n")
 	for _, addr := range h.Stack {
-		fmt.Fprintf(&b, "  %s\n",
-			chalk.Red.Color(indent+fmt.Sprintf("%v", addr)))
+		b.WriteString("          " + chalk.Red.Color(fmt.Sprintf("%v", addr)) + "\n")
 	}
 	b.WriteString("\n")
 
