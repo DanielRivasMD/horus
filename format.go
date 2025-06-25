@@ -87,7 +87,6 @@ func PseudoJSONFormatter(h *Herror) string {
 		paddedKey := fmt.Sprintf("  %-*s", maxLen, f.key)
 		fmt.Fprintf(&b, "%s %s,\n", f.color.Color(paddedKey), chalk.Red.Color(f.value))
 	}
-	b.WriteString("\n")
 
 	// Print Category
 	paddedKey := fmt.Sprintf("%-*s", maxLen, fields[3].key)
@@ -98,7 +97,6 @@ func PseudoJSONFormatter(h *Herror) string {
 	for _, addr := range h.Stack {
 		b.WriteString("  " + chalk.Dim.TextStyle(fmt.Sprintf("%v", addr)) + "\n")
 	}
-	b.WriteString("\n")
 
 	return b.String()
 }
