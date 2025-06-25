@@ -38,11 +38,11 @@ func Operation(err error) (string, bool) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // UserMessage returns the user-friendly message associated with an Herror, if present.
-func UserMessage(err error) string {
+func UserMessage(err error) (string, bool) {
 	if herr, ok := AsHerror(err); ok {
-		return herr.Message
+		return herr.Message, true
 	}
-	return ""
+	return "", false
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,16 +79,16 @@ func Category(err error) (string, bool) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // StackTrace returns the formatted stack trace from an error if it's an Herror.
-func StackTrace(err error) string {
+func StackTrace(err error) (string, bool) {
 	if herr, ok := AsHerror(err); ok {
-		return herr.StackTrace()
+		return herr.StackTrace(), true
 	}
-	return ""
+	return "", false
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func RootCause(err error) error {
+func RootCauseHelper(err error) error {
 	for {
 		if un := errors.Unwrap(err); un != nil {
 			err = un
