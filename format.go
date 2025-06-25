@@ -46,49 +46,54 @@ func PseudoJSONFormatter(h *Herror) string {
 	type field struct {
 		key   string
 		value string
+		color chalk.Color
 	}
 
-	// Collect top-level fields
+	// Collect all top-level fields (excluding Stack)
 	fields := []field{
-		{"Op", fmt.Sprintf("\"%s\"", h.Op)},
-		{"Message", fmt.Sprintf("\"%s\"", h.Message)},
-		{"Err", fmt.Sprintf("%v", h.Err)},
-		{"Category", fmt.Sprintf("\"%s\"", h.Category)},
+		{"Op", fmt.Sprintf("\"%s\"", h.Op), chalk.Yellow},
+		{"Message", fmt.Sprintf("\"%s\"", h.Message), chalk.Yellow},
+		{"Err", fmt.Sprintf("%v", h.Err), chalk.Yellow},
+		{"Category", fmt.Sprintf("\"%s\"", h.Category), chalk.Yellow},
 	}
 
-	// Calculate maximum width for alignment
-	maxWidth := 0
-	for _, f := range fields {
-		if len(f.key) > maxWidth {
-			maxWidth = len(f.key)
-		}
+	// Flatten Details map into same format
+	var detailFields []field
+	for k, v := range h.Details {
+		detailFields = append(detailFields, field{
+			key:   k,
+			value: fmt.Sprintf("\"%v\"", v),
+			color: chalk.White,
+		})
 	}
-	for k := range h.Details {
-		if len(k) > maxWidth-2 { // +2 because of indent
-			maxWidth = len(k) + 2
+
+	// Find longest key for padding
+	maxLen := 0
+	for _, f := range append(fields, detailFields...) {
+		if len(f.key) > maxLen {
+			maxLen = len(f.key)
 		}
 	}
 
 	// Format top-level fields
 	for _, f := range fields[:3] { // Op, Message, Err
-		fmt.Fprintf(&b, "%-*s%s%s,\n", maxWidth+2, chalk.Yellow.Color(f.key+":"), " ", chalk.Red.Color(f.value))
+		fmt.Fprintf(&b, "%-*s %s,\n", maxLen+1, f.color.Color(f.key+":"), chalk.Red.Color(f.value))
 	}
 
 	// Format Details
 	b.WriteString(chalk.Yellow.Color("Details:") + "\n")
-	for k, v := range h.Details {
-		key := fmt.Sprintf("  %s:", k)
-		fmt.Fprintf(&b, "%-*s%s%s,\n", maxWidth+2, chalk.White.Color(key), " ", chalk.Red.Color(fmt.Sprintf("\"%v\"", v)))
+	for _, f := range detailFields {
+		fmt.Fprintf(&b, "  %-*s %s,\n", maxLen+1, f.color.Color(f.key+":"), chalk.Red.Color(f.value))
 	}
 	b.WriteString("\n")
 
 	// Category
-	fmt.Fprintf(&b, "%-*s%s%s,\n", maxWidth+2, chalk.Yellow.Color("Category:"), " ", chalk.Red.Color(fields[3].value))
+	fmt.Fprintf(&b, "%-*s %s,\n", maxLen+1, fields[3].color.Color(fields[3].key+":"), chalk.Red.Color(fields[3].value))
 
-	// Stack
+	// Format Stack (unaligned, indented)
 	b.WriteString(chalk.Yellow.Color("Stack:") + "\n")
 	for _, addr := range h.Stack {
-		b.WriteString("          " + chalk.Red.Color(fmt.Sprintf("%v", addr)) + "\n")
+		b.WriteString("  " + chalk.Red.Color(fmt.Sprintf("%v", addr)) + "\n")
 	}
 	b.WriteString("\n")
 
