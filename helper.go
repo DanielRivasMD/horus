@@ -10,10 +10,8 @@ import (
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// IsHerror checks if the given error or any error in its chain is an Herror.
-func IsHerror(err error) bool {
-	var target *Herror
-	return errors.As(err, &target)
+type HErrorer interface {
+	Herror() *Herror
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -30,11 +28,11 @@ func AsHerror(err error) (*Herror, bool) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Operation returns the operation associated with an Herror, if present.
-func Operation(err error) string {
+func Operation(err error) (string, bool) {
 	if herr, ok := AsHerror(err); ok {
-		return herr.Op
+		return herr.Op, true
 	}
-	return ""
+	return "", false
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,8 +47,8 @@ func UserMessage(err error) string {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Detail returns a specific detail associated with an Herror, if present.
-func Detail(err error, key string) (any, bool) {
+// GetDetail returns a specific detail associated with an Herror, if present.
+func GetDetail(err error, key string) (any, bool) {
 	if herr, ok := AsHerror(err); ok && herr.Details != nil {
 		value, exists := herr.Details[key]
 		return value, exists
@@ -60,22 +58,22 @@ func Detail(err error, key string) (any, bool) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// AllDetails returns all details associated with an Herror, if present.
-func AllDetails(err error) map[string]any {
-	if herr, ok := AsHerror(err); ok {
-		return herr.Details
+// Details returns all details associated with an Herror, if present.
+func Details(err error) map[string]any {
+	if h, ok := AsHerror(err); ok && h.Details != nil {
+		return h.Details
 	}
-	return nil
+	return map[string]any{}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Category returns the category associated with an Herror, if present.
-func Category(err error) string {
+func Category(err error) (string, bool) {
 	if herr, ok := AsHerror(err); ok {
-		return herr.Category
+		return herr.Category, true
 	}
-	return ""
+	return "", false
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,6 +84,18 @@ func StackTrace(err error) string {
 		return herr.StackTrace()
 	}
 	return ""
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+func RootCause(err error) error {
+	for {
+		if un := errors.Unwrap(err); un != nil {
+			err = un
+			continue
+		}
+		return err
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
