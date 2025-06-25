@@ -5,6 +5,7 @@ package horus
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 import (
+	"encoding/json"
 	"fmt"
 	"runtime"
 	"strings"
@@ -73,6 +74,21 @@ func (e *Herror) StackTrace() string {
 		}
 	}
 	return sb.String()
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// MarshalJSON ensures Err is emitted as its Error() string, not an object.
+func (h *Herror) MarshalJSON() ([]byte, error) {
+	// alias to avoid infinite recursion
+	type alias Herror
+	return json.Marshal(&struct {
+		Err string `json:"Err"`
+		*alias
+	}{
+		Err:   h.Err.Error(),
+		alias: (*alias)(h),
+	})
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
