@@ -7,6 +7,7 @@ package horus
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/ttacon/chalk"
 )
