@@ -5,6 +5,7 @@ package horus
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
@@ -21,8 +22,6 @@ func TestNewCollectingError_Empty(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func TestCollectingError_ZeroWrite(t *testing.T) {
 	ce := NewCollectingError()
 	n, err := ce.Write([]byte{})
@@ -36,8 +35,6 @@ func TestCollectingError_ZeroWrite(t *testing.T) {
 		t.Errorf("after zero‐write, Error() = %q; want empty string", got)
 	}
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestCollectingError_SingleWrite(t *testing.T) {
 	ce := NewCollectingError()
@@ -54,8 +51,6 @@ func TestCollectingError_SingleWrite(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func TestCollectingError_MultipleWrites(t *testing.T) {
 	ce := NewCollectingError()
 	ce.Write([]byte("foo"))
@@ -65,15 +60,55 @@ func TestCollectingError_MultipleWrites(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func TestCollectingError_CompatibleWithFprintf(t *testing.T) {
 	ce := NewCollectingError()
-	// fmt.Fprintf writes through io.Writer
 	fmt.Fprintf(ce, "value=%d; ok=%t\n", 42, true)
 	want := "value=42; ok=true\n"
 	if got := ce.Error(); got != want {
 		t.Errorf("after Fprintf, Error() = %q; want %q", got, want)
+	}
+}
+
+func TestCollectingError_WriteStringAndBytes(t *testing.T) {
+	ce := NewCollectingError()
+	s := "gopher"
+	n, err := ce.WriteString(s)
+	if err != nil {
+		t.Fatalf("WriteString returned error: %v", err)
+	}
+	if n != len(s) {
+		t.Errorf("WriteString returned n = %d; want %d", n, len(s))
+	}
+
+	// Error() should match
+	if got := ce.Error(); got != s {
+		t.Errorf("Error() = %q; want %q", got, s)
+	}
+
+	// Bytes() returns a copy
+	b := ce.Bytes()
+	if !bytes.Equal(b, []byte(s)) {
+		t.Errorf("Bytes() = %q; want %q", b, s)
+	}
+	// Mutate returned slice and ensure underlying buffer doesn't change
+	b[0] = 'X'
+	if ce.Error()[0] == 'X' {
+		t.Error("Bytes() should return a copy, not the internal buffer")
+	}
+}
+
+func TestCollectingError_Reset(t *testing.T) {
+	ce := NewCollectingError()
+	ce.WriteString("first")
+	ce.Reset()
+	if got := ce.Error(); got != "" {
+		t.Errorf("after Reset, Error() = %q; want empty", got)
+	}
+
+	// Should be reusable
+	ce.WriteString("second")
+	if got := ce.Error(); got != "second" {
+		t.Errorf("after Reset and write, Error() = %q; want %q", got, "second")
 	}
 }
 
