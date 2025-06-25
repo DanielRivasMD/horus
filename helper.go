@@ -73,15 +73,16 @@ func GetDetail(err error, key string) (any, bool) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Details returns all details associated with an Herror, if present.
+// Details returns all details associated with an Herror, or
+// an empty (non-nil) map if there is none.
 func Details(err error) map[string]any {
 	if h, ok := AsHerror(err); ok {
-		out := make(map[string]any, len(h.Details))
-		for k, v := range h.Details {
-			out[k] = v
+		if h.Details != nil {
+			return h.Details
 		}
-		return out
+		return map[string]any{} // non-nil empty
 	}
-	return nil
+	return map[string]any{} // non-nil empty
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
