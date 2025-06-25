@@ -78,20 +78,20 @@ func PseudoJSONFormatter(h *Herror) string {
 	// Print aligned top-level fields
 	for _, f := range fields[:3] {
 		paddedKey := fmt.Sprintf("%-*s", maxLen, f.key)
-		fmt.Fprintf(&b, "%s%s,\n", f.color.Color(paddedKey), chalk.Red.Color(f.value))
+		fmt.Fprintf(&b, "%s %s,\n", f.color.Color(paddedKey), chalk.Red.Color(f.value))
 	}
 
 	// Print Details
 	b.WriteString(chalk.Yellow.Color("Details") + "\n")
 	for _, f := range detailFields {
 		paddedKey := fmt.Sprintf("  %-*s", maxLen, f.key)
-		fmt.Fprintf(&b, "%s%s,\n", f.color.Color(paddedKey), chalk.Red.Color(f.value))
+		fmt.Fprintf(&b, "%s %s,\n", f.color.Color(paddedKey), chalk.Red.Color(f.value))
 	}
 	b.WriteString("\n")
 
 	// Print Category
 	paddedKey := fmt.Sprintf("%-*s", maxLen, fields[3].key)
-	fmt.Fprintf(&b, "%s: %s,\n", fields[3].color.Color(paddedKey), chalk.Red.Color(fields[3].value))
+	fmt.Fprintf(&b, "%s %s,\n", fields[3].color.Color(paddedKey), chalk.Red.Color(fields[3].value))
 
 	// Stack remains unaligned
 	b.WriteString(chalk.Yellow.Color("Stack") + "\n")
