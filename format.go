@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/ttacon/chalk"
@@ -20,9 +21,21 @@ type FormatterFunc func(*Herror) string
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+func pad(key string, width int) string {
+	return fmt.Sprintf("%-*s", width, key)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+func PlainFormatter(h *Herror) string {
+	return fmt.Sprintf("%s: %s", h.Op, h.Message)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // JSONFormatter generates a JSON representation of an Herror.
 func JSONFormatter(h *Herror) string {
-	jsonOutput, err := json.Marshal(h)
+	jsonOutput, err := json.MarshalIndent(h, "", "  ")
 	if err != nil {
 		return fmt.Sprintf("error formatting: %v", err)
 	}
@@ -45,15 +58,24 @@ func PseudoJSONFormatter(h *Herror) string {
 		{"Op", h.Op, chalk.Yellow},
 		{"Message", h.Message, chalk.Yellow},
 		{"Err", fmt.Sprintf("%v", h.Err), chalk.Yellow},
-		{"Category", h.Category, chalk.Yellow},
+	}
+	// only append Category if non-empty
+	if h.Category != "" {
+		fields = append(fields, field{"Category", h.Category, chalk.Yellow})
 	}
 
 	// Convert Details into aligned field list
+	// before building detailFields:
+	keys := make([]string, 0, len(h.Details))
 	var detailFields []field
-	for k, v := range h.Details {
+	for k := range h.Details {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
 		detailFields = append(detailFields, field{
 			key:   k,
-			value: fmt.Sprintf("%v", v),
+			value: fmt.Sprintf("%v", h.Details[k]),
 			color: chalk.White,
 		})
 	}
