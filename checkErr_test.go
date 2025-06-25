@@ -46,10 +46,8 @@ func TestRegisterErrorAndGetErrorRegistry(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func TestCheckErr_DefaultBehavior(t *testing.T) {
-	// capture exit code
+	// override exitFunc to capture the code
 	origExit := exitFunc
 	var code int
 	exitFunc = func(c int) { code = c }
@@ -58,13 +56,13 @@ func TestCheckErr_DefaultBehavior(t *testing.T) {
 	// capture output
 	buf := &bytes.Buffer{}
 
-	// invoke CheckErr with a real error and our writer
+	// invoke CheckErr
 	CheckErr(
 		errors.New("boom"),
 		WithWriter(buf),
 	)
 
-	// exit code should be default 1
+	// verify exit code
 	if code != 1 {
 		t.Errorf("exit code = %d; want 1", code)
 	}
@@ -74,16 +72,14 @@ func TestCheckErr_DefaultBehavior(t *testing.T) {
 		"boom",          // original error
 		"check error",   // default op
 		"runtime_error", // default category
-		"severity",      // default details
-		"critical",
+		"severity",      // default detail key
+		"critical",      // default detail value
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output %q missing %q", out, want)
 		}
 	}
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestCheckErr_WithOverrides(t *testing.T) {
 	// override exitFunc
@@ -95,6 +91,7 @@ func TestCheckErr_WithOverrides(t *testing.T) {
 	// capture output
 	buf := &bytes.Buffer{}
 
+	// call with every override
 	CheckErr(
 		errors.New("fail"),
 		WithWriter(buf),
@@ -105,17 +102,18 @@ func TestCheckErr_WithOverrides(t *testing.T) {
 		WithDetails(map[string]any{"path": "/etc/app.cfg"}),
 	)
 
+	// verify exit code
 	if code != 42 {
 		t.Errorf("exit code = %d; want 42", code)
 	}
 
 	out := stripANSI(buf.String())
 	wantLines := []string{
-		"Op       load-conf,",            // the overridden op
-		"Message  couldn't load config,", // the overridden message
-		"Err      fail,",                 // the original error
-		"path     /etc/app.cfg,",         // details line
-		"Category cfg_err,",              // the overridden category
+		"Op       load-conf,",
+		"Message  couldn't load config,",
+		"Err      fail,",
+		"path     /etc/app.cfg,",
+		"Category cfg_err,",
 	}
 	for _, want := range wantLines {
 		if !strings.Contains(out, want) {
