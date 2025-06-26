@@ -4,9 +4,9 @@ package horus
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// NotFoundAction defines a custom action when a directory is missing.
-// This action should return (bool, error) where bool indicates whether the
-// missing directory was successfully handled and error carries any diagnostic details.
-type NotFoundAction func(string) (bool, error)
+// NotFoundAction is invoked when a lookup fails.
+// It should return (resolved, err), where `resolved==false` means “we didn’t fix it,”
+// and any non-nil error will be propagated.
+type NotFoundAction func(address string) (bool, error)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
