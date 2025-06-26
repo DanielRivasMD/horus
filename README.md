@@ -4,18 +4,59 @@
 [![go Version](https://img.shields.io/badge/go-VERSION-green.svg)](LURL)
 
 ## Overview
+`horus` is a Go error‐handling toolkit that does more than “return an error”
 
-horus: a Go library for error handling and propagation with rich context and stack traces.
+`horus` captures the _what_ (operation), _why_ (user‐friendly message), _where_ (stack trace), and _how_ (underlying cause and arbitrary key/value details), then lets you:
 
----
+- Wrap and re‐wrap errors with layered context
+- Seamlessly propagate or bail out with `CheckErr` (colored/JSON + configurable exit codes)
+- Plug into any CLI, HTTP handler, or logger with zero ceremony
+- Whether you’re building a command‐line tool, a microservice, or a big data pipeline, `horus` ensures nothing gets lost in translation when things go sideways
 
 ## Features
-- **Context-Rich Errors**: Automatically wrap and enrich errors with context and stack traces.
-- **Error Propagation**: Seamlessly pass errors upward with additional details.
-- **Custom Formatting**: Supports colored output and JSON representations for logging.
-- **Integration Ready**: Easily integrate with external libraries to build robust applications.
 
----
+### Context-Rich Errors
+
+Create `Herror` instances via `NewHerror`, `NewCategorizedHerror`, `Wrap` or `WithDetail` that carry:
+
+- Operation name (`Op`)
+- Human-readable message (`Message`)
+- Category tag (`Category`)
+- Arbitrary details map (`Details`)
+- Full stack trace
+
+### Error Propagation & Inspection
+
+- `PropagateErr` for idiomatic upstream wrapping
+- `RootCause(err)` to peel back nested failures
+- Helpers like `AsHerror`, `IsHerror`, `Operation`, `UserMessage`, `GetDetail`, `Category`, `StackTrace`
+
+### Flexible Formatting
+
+- `JSONFormatter` for structured logs
+- `PseudoJSONFormatter` for aligned, colorized tables in your terminal
+- `PlainFormatter` or `SimpleColoredFormatter` for minimal output
+
+### Check & Exit
+
+- `CheckErr(err, opts...)` writes formatted error to your choice of `io.Writer` and exits with a customizable code
+- Built-in overrides: writer, formatter, exit code, operation, category, message, details
+
+### Not-Found Hooks
+
+- `LogNotFound` / `NullAction` implement `NotFoundAction` for pluggable “resource missing” behaviors
+- Fully testable via `WithLogWriter`
+
+### Test Utilities
+
+- `CollectingError` (implements `io.Writer` + `error`) to capture and inspect output in tests
+- Easy use of `WithWriter(buf)`  to drive deterministic output
+
+### Panic Integration
+
+- `Panic(op, msg)` logs a colored panic banner, captures a stack, then panics with a full `Herror` payload
+
+
 ## Installation
 
 ### **Language-Specific**
@@ -30,7 +71,46 @@ horus: a Go library for error handling and propagation with rich context and sta
 import "github.com/DanielRivasMD/horus"
 ```
 
+## Quickstart
+
+```
+package main
+
+import (
+  "errors"
+  "fmt"
+
+  "github.com/your/module/horus"
+)
+
+func loadConfig(path string) error {
+  // pretend this fails
+  return errors.New("file not found")
+}
+
+func main() {
+  err := loadConfig("/etc/app.cfg")
+  if err != nil {
+    // wrap with context, category, and detail
+    wrapped := horus.NewCategorizedHerror(
+      "LoadConfig",
+      "IO_ERROR",
+      "unable to load configuration",
+      err,
+      map[string]any{"path": "/etc/app.cfg"},
+    )
+    // print a pretty, colored table to stderr and exit
+    horus.CheckErr(wrapped)
+  }
+
+  fmt.Println("config loaded")
+}
+```
+
 ## Example
+
+
+
 
 ### Error Handling Integration
 
