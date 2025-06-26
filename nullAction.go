@@ -7,9 +7,9 @@ package horus
 // NullAction returns a NotFoundAction that does nothing.
 // It simply returns false (meaning the missing resource remains unresolved) and no error.
 // Use this when you want to provide a custom action that doesn't attempt any remediation.
-func NullAction() NotFoundAction {
+func NullAction(resolved bool) NotFoundAction {
 	return func(path string) (bool, error) {
-		return false, nil
+		return resolved, nil
 	}
 }
 
