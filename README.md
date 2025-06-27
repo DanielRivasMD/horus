@@ -31,6 +31,12 @@ Create `Herror` instances via `NewHerror`, `NewCategorizedHerror`, `Wrap` or `Wi
 - `RootCause(err)` to peel back nested failures
 - Helpers like `AsHerror`, `IsHerror`, `Operation`, `UserMessage`, `GetDetail`, `Category`, `StackTrace`
 
+```go
+err := doSomething()
+// only if err != nil it gets wrapped
+return horus.PropagateErr("DoSomething", "SERVICE", "failed", err, nil)
+```
+
 ### Flexible Formatting
 
 - `JSONFormatter` for structured logs
@@ -42,10 +48,21 @@ Create `Herror` instances via `NewHerror`, `NewCategorizedHerror`, `Wrap` or `Wi
 - `CheckErr(err, opts...)` writes formatted error to your choice of `io.Writer` and exits with a customizable code
 - Built-in overrides: writer, formatter, exit code, operation, category, message, details
 
+```go
+horus.CheckErr(err)               // default: colored table + os.Exit(1)
+horus.CheckErr(err, horus.WithWriter(os.Stdout), horus.WithExitCode(42))
+```
+
 ### Not-Found Hooks
 
 - `LogNotFound` / `NullAction` implement `NotFoundAction` for pluggable “resource missing” behaviors
 - Fully testable via `WithLogWriter`
+
+```go
+act := horus.LogNotFound("cache miss")
+resolved, err := act("user:123")
+// resolved==false, err==nil
+```
 
 ### Test Utilities
 
@@ -73,7 +90,7 @@ import "github.com/DanielRivasMD/horus"
 
 ## Quickstart
 
-```
+```go
 package main
 
 import (
@@ -109,157 +126,283 @@ func main() {
 
 ## Example
 
-
-
-
 ### Error Handling Integration
 
 The horus error-handling library provides a set of powerful functions to wrap, propagate, log, and format errors across your application. Here’s how you can leverage these functions at various layers:
 
 #### 1. Lower-Level Functions
 
-Wrap errors as soon as they occur. For example, when reading a configuration file:
+Wrap errors as soon as they occur
+
+For example, when reading a configuration file:
 
 ```go
 package fileutils
 
 import (
-    "io/ioutil"
-    "github.com/DanielRivasMD/horus"
+  "fmt"
+  "os"
+
+  "github.com/DanielRivasMD/horus"
 )
 
+// ReadConfig tries to read a JSON config from disk.
+// On failure it wraps the underlying error with full context, category and details.
 func ReadConfig(path string) ([]byte, error) {
-    data, err := ioutil.ReadFile(path)
-    if err != nil {
-        // Wrap the error immediately with context, including a stack trace.
-        return nil, horus.Wrap(err, "read config", "failed to read config file")
-    }
-    return data, nil
+  data, err := os.ReadFile(path)
+  if err != nil {
+    return nil, horus.PropagateErr(
+      "ReadConfig",                         // Op
+      "IO_ERROR",                           // Category
+      fmt.Sprintf("unable to load config"), // Message
+      err,                                  // underlying error
+      map[string]any{                       // Details
+        "path": path,
+      },
+    )
+  }
+  return data, nil
 }
 ```
 
-This approach ensures that the error is enriched with context right from the moment it occurs.
+What this does:
 
----
+- Uses Go 1.16+’s `os.ReadFile` instead of the deprecated `ioutil`
+- Always returns `nil` or a rich `*Herror`, never a raw `error`
+- Stamps on:
+  - `Op` = "ReadConfig"
+  - `Category` = "IO_ERROR"
+  - `Message` = a user-friendly "unable to load config"
+  - `Details` = {"path": path}
+  - `Stack` trace (captured at the call site)
+
+You’ll now get output like:
+
+```text
+Op       ReadConfig,
+Message  unable to load config,
+Err      open /etc/app.cfg: no such file or directory,
+path     /etc/app.cfg,
+Category IO_ERROR,
+
+Stack
+  fileutils.ReadConfig()
+    /Users/.../fileutils/config.go:12
+  main.main()
+    /Users/.../cmd/app/main.go:23
+  runtime.main()
+    /usr/local/go/src/runtime/proc.go:250
+  ...
+```
+
+and if you prefer JSON:
+
+```go
+horus.CheckErr(err, horus.WithFormatter(horus.JSONFormatter))
+```
+
+will emit something like:
+
+```json
+{
+  "Op": "ReadConfig",
+  "Message": "unable to load config",
+  "Err": "open /etc/app.cfg: no such file or directory",
+  "Details": { "path": "/etc/app.cfg" },
+  "Category": "IO_ERROR",
+  "Stack": [ ... ]
+}
+```
 
 #### 2. Business Logic Functions
 
-When higher-level functions catch errors from lower-level routines, use `PropagateErr` or `WithDetail` to add extra context:
+When higher-level functions catch errors from lower‐level routines, add domain‐specific context with `PropagateErr` (or `WithDetail`) so every layer contributes its own clues:
+
 
 ```go
 package business
 
 import (
-    "github.com/DanielRivasMD/horus"
-    "github.com/yourrepo/fileutils"
+  "github.com/your_module/fileutils"
+  "github.com/DanielRivasMD/horus"
 )
 
+// LoadAndProcessConfig orchestrates reading + validating your config.
+// Any I/O or parse failures get wrapped with step-specific context.
 func LoadAndProcessConfig(configPath string) error {
-    data, err := fileutils.ReadConfig(configPath)
-    if err != nil {
-        // Propagate the error with extra details for context.
-        return horus.PropagateErr(
-            "load config",
-            "config_error",
-            "unable to load configuration",
-            err,
-            map[string]any{"configPath": configPath},
-        )
-    }
-    // Further processing with data...
-    _ = data
-    return nil
+  // 1. Call the fileutils helper
+  data, err := fileutils.ReadConfig(configPath)
+  if err != nil {
+    // PropagateErr merges the underlying category/details and stamps on new ones.
+    return horus.PropagateErr(
+      "LoadAndProcessConfig",           // operation name
+      "CONFIG_ERROR",                   // business category
+      "unable to load application config", // user-friendly message
+      err,                              // the error from ReadConfig
+      map[string]any{                   // extra details
+        "path":   configPath,
+        "service": "business",
+      },
+    )
+  }
+
+  // 2. (Optional) add validation context
+  if len(data) == 0 {
+    // NewHerror creates a fresh Herror; WithDetail would wrap an existing one.
+    return horus.NewHerror(
+      "LoadAndProcessConfig",
+      "config data is empty",
+      nil,
+      map[string]any{"path": configPath},
+    )
+  }
+
+  // 3. process the config...
+  return nil
 }
 ```
 
-Propagating the error in this manner ensures that every layer receives the necessary context for effective debugging.
-
----
+- `PropagateErr` automatically carries forward any category or details from the lower layer (and merges the new payload)
+- We choose a “business” category ("CONFIG_ERROR") that’s orthogonal to the lower-level "IO_ERROR"
+- We include both `path` and our own service:"business" detail.
+- For purely business‐rule failures (like empty data), we use `NewHerror` to start a fresh error.
 
 #### 3. Centralized Error Reporting and Logging
 
-At the entry point of your application—typically in your `main` function—you can use `CheckErr` to log errors in a colored, structured format and exit gracefully if necessary:
+At the top‐level ofthe app - usually in `main()` - `CheckErr` can be use as one‐stop fatal error handler:
+
+- Format the error (colored table by default) or JSON if you prefer
+- Register the error’s category in a global registry (for metrics/observability)
+- Exit with a configurable code (default: 1)
+
 
 ```go
 package main
 
 import (
-    "github.com/DanielRivasMD/horus"
-    "github.com/yourrepo/business"
+  "os"
+
+  "github.com/your/module/horus"
+  "github.com/your/module/business"
 )
 
 func main() {
-    err := business.LoadAndProcessConfig("config.json")
-    if err != nil {
-        // Logs the error with a colored, formatted output and registers error metrics.
-        horus.CheckErr(err)
-    }
+  // Run your business logic
+  err := business.LoadAndProcessConfig("config.json")
+  if err != nil {
+    // Default: colored table → stderr, exit code 1
+    horus.CheckErr(err)
 
-    // Continue with the rest of your application...
+    // Or JSON + code 2 + log to stdout:
+    // horus.CheckErr(
+    //   err,
+    //   horus.WithFormatter(horus.JSONFormatter),
+    //   horus.WithExitCode(2),
+    //   horus.WithWriter(os.Stdout),
+    // )
+  }
+
+  // Continue with normal execution...
 }
 ```
 
-`horus.CheckErr` acts as your centralized safety net for fatal errors.
+Under the hood, `CheckErr` does:
 
----
+- `RegisterError(err)` – increments a counter for your error’s category
+- `fmt.Fprintln(writer, formatter(err))` – prints your chosen format
+- `exitFunc(code)` – calls `os.Exit(code)` by default
+
+This ensures that all unhandled, fatal errors flow through a consistent, observable pipeline
 
 #### 4. Integration with External Processes
 
-For commands executed via external processes (e.g., running system commands), use functions like `ExecCmd` or `CaptureExecCmd`:
+For commands executed via external processes (e.g., running system commands), use functions like `ExecCmd` or `CaptureExecCmd`, `horus`:
+
+- Shows both `ExecCmd` (streams output) and `CaptureExecCmd` (buffers it)
+- Wraps errors with `PropagateErr` for context before calling `CheckErr`
+- Logs stdout/stderr details in your error’s `Details` map
 
 ```go
 package domovoi
 
 import (
-    "fmt"
-    "github.com/DanielRivasMD/horus"
+  "fmt"
+  "os/exec"
+
+  "github.com/your/module/horus"
 )
 
-func SomeCommandRoutine() {
-    stdout, stderr, err := horus.CaptureExecCmd("ls", "-la")
-    if err != nil {
-        // Handle critical error with CheckErr or log it appropriately.
-        horus.CheckErr(err)
-    }
-    fmt.Println("Standard Output:", stdout)
-    fmt.Println("Error Output:", stderr)
+func ListDirectory(path string) {
+  // Example 1: stream directly, exit on failure
+  err := horus.ExecCmd(
+    "ListDirectory",                // Op
+    "SYS_CMD",                      // Category
+    fmt.Sprintf("ls %s", path),     // Message
+    exec.Command("ls", "-la", path),
+  )
+  horus.CheckErr(err) // will wrap/print/exit if err!=nil
+
+  // Example 2: capture both streams for inspection
+  stdout, stderr, err2 := horus.CaptureExecCmd("ListDirectory", "SYS_CMD", fmt.Sprintf("ls %s", path), exec.Command("ls", path))
+  if err2 != nil {
+    // add stdout/stderr into error details for deeper context
+    errDetail := horus.PropagateErr(
+      "ListDirectory",
+      "SYS_CMD",
+      "command execution failed",
+      err2,
+      map[string]any{"stdout": stdout, "stderr": stderr},
+    )
+    horus.CheckErr(errDetail)
+  }
+
+  fmt.Println("Done listing files.")
 }
 ```
 
-This function wraps and logs any error encountered during command execution, providing both stdout and stderr for complete diagnostics.
-
----
+- `ExecCmd(op, category, message, *exec.Cmd)` runs and logs failures immediately
+- `CaptureExecCmd` returns `(stdout, stderr string, err error)`
+- We propagate errors with `PropagateErr` so our top‐level `CheckErr` shows the full story: operation, category, message, underlying cause, stdout, stderr, and stack trace
 
 #### 5. OS Level Operations
 
-For operations such as changing directories, use horus to capture detailed context if something goes wrong:
+When wrapping system calls like `os.Chdir`, use Horus to enrich and propagate errors with full context:
 
 ```go
 package domovoi
 
 import (
-    "github.com/DanielRivasMD/horus"
+  "fmt"
+  "os"
+
+  "github.com/your/module/horus"
 )
 
+// ChangeDirectory attempts to chdir into the given path.
+// On failure it wraps the underlying os.Chdir error with operation,
+// category, user-friendly message, and the path in Details.
 func ChangeDirectory(path string) error {
-    err := ChangeDir(path)
-    if err != nil {
-        // The error is wrapped with colored output and detailed context.
-        return err
-    }
-    return nil
+  if err := os.Chdir(path); err != nil {
+    return horus.PropagateErr(
+      "ChangeDirectory",                               // Op
+      "FS_ERROR",                                      // Category
+      fmt.Sprintf("unable to change working directory"),// Message
+      err,                                             // underlying error
+      map[string]any{"path": path},                    // Details
+    )
+  }
+  return nil
 }
 ```
 
-By utilizing functions like `horus.NewCategorizedHerror` within these operations, even system-level errors carry the necessary context for troubleshooting.
+- `Op` = "ChangeDirectory"
+- `Category` = "FS_ERROR"
+- `Message` = "unable to change working directory"
+- `Details` = {"path": "/some/dir"}
+- `Stack` trace captured at the call site
 
----
+That way, any failure bubbles up as a full `*Herror` - complete with stack, category, and details—making your logs and CLI output immediately actionable
 
-## Configuration
-
-horus uses sensible defaults for error capturing and formatting but can be customized via environment variables or function parameters.
-
----
 ## Development
 
 Build from source:
@@ -277,10 +420,10 @@ cd horus
 ---
 ## FAQ
 Q: How to resolve?
-A: Use `horus.Wrap`, `horus.PropagateErr`, and `horus.CheckErr` for detailed context and troubleshooting.
+A: Use `horus.Wrap`, `horus.PropagateErr`, and `horus.CheckErr` for detailed context and troubleshooting
 
 Q: Cross-platform support?
-A: Yes, horus is designed to work seamlessly on Windows, macOS, and Linux.
+A: Yes, horus is designed to work seamlessly on Windows, macOS, and Linux
 
 ## License
 GPL [2025] [Daniel Rivas]
