@@ -21,6 +21,7 @@ type FormatterFunc func(*Herror) string
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// TODO: integrate function
 func pad(key string, width int) string {
 	return fmt.Sprintf("%-*s", width, key)
 }

@@ -97,7 +97,7 @@ import (
   "errors"
   "fmt"
 
-  "github.com/your/module/horus"
+  "github.com/DanielRivasMD/horus"
 )
 
 func loadConfig(path string) error {
@@ -152,11 +152,11 @@ func ReadConfig(path string) ([]byte, error) {
   data, err := os.ReadFile(path)
   if err != nil {
     return nil, horus.PropagateErr(
-      "ReadConfig",                         // Op
-      "IO_ERROR",                           // Category
-      fmt.Sprintf("unable to load config"), // Message
-      err,                                  // underlying error
-      map[string]any{                       // Details
+      "ReadConfig",                              // Op
+      "IO_ERROR",                                // Category
+      fmt.Sprintf("unable to load config"),      // Message
+      err,                                       // underlying error
+      map[string]any{                            // Details
         "path": path,
       },
     )
@@ -282,8 +282,8 @@ package main
 import (
   "os"
 
-  "github.com/your/module/horus"
-  "github.com/your/module/business"
+  "github.com/DanielRivasMD/horus"
+  "github.com/your_module/business"
 )
 
 func main() {
@@ -329,7 +329,7 @@ import (
   "fmt"
   "os/exec"
 
-  "github.com/your/module/horus"
+  "github.com/DanielRivasMD/horus"
 )
 
 func ListDirectory(path string) {
@@ -375,7 +375,7 @@ import (
   "fmt"
   "os"
 
-  "github.com/your/module/horus"
+  "github.com/DanielRivasMD/horus"
 )
 
 // ChangeDirectory attempts to chdir into the given path.
