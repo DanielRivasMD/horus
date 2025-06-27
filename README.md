@@ -327,36 +327,43 @@ package domovoi
 
 import (
   "fmt"
-  "os/exec"
 
   "github.com/DanielRivasMD/horus"
 )
 
-func ListDirectory(path string) {
-  // Example 1: stream directly, exit on failure
-  err := horus.ExecCmd(
-    "ListDirectory",                // Op
-    "SYS_CMD",                      // Category
-    fmt.Sprintf("ls %s", path),     // Message
-    exec.Command("ls", "-la", path),
-  )
-  horus.CheckErr(err) // will wrap/print/exit if err!=nil
-
-  // Example 2: capture both streams for inspection
-  stdout, stderr, err2 := horus.CaptureExecCmd("ListDirectory", "SYS_CMD", fmt.Sprintf("ls %s", path), exec.Command("ls", path))
-  if err2 != nil {
-    // add stdout/stderr into error details for deeper context
-    errDetail := horus.PropagateErr(
-      "ListDirectory",
-      "SYS_CMD",
-      "command execution failed",
-      err2,
-      map[string]any{"stdout": stdout, "stderr": stderr},
+// ListDirectory runs `ls -la <path>` twice: once streamed, once captured.
+// It returns an error if anything fails; caller can then CheckErr(err).
+func ListDirectory(path string) error {
+  // 1) Stream mode
+  if err := ExecCmd("ls", "-la", path); err != nil {
+    // ExecCmd already wraps in *Herror, but we can add our own op/category
+    return horus.NewCategorizedHerror(
+      "ListDirectory",                // Op
+      "SYS_CMD",                      // Category
+      fmt.Sprintf("ls -la %s", path), // Message
+      err,
+      nil, // no extra details here
     )
-    horus.CheckErr(errDetail)
   }
 
-  fmt.Println("Done listing files.")
+  // 2) Capture mode
+  stdout, stderr, err := CaptureExecCmd("ls", "-la", path)
+  if err != nil {
+    // We got a *Herror from CaptureExecCmd—merge in the captured output
+    return horus.PropagateErr(
+      "ListDirectory",
+      "SYS_CMD",
+      "failed to capture ls output",
+      err,
+      map[string]any{"stdout": stdout, "stderr": stderr},
+    )
+  }
+
+  fmt.Println("=== STDOUT ===")
+  fmt.Print(stdout)
+  fmt.Println("=== STDERR ===")
+  fmt.Print(stderr)
+  return nil
 }
 ```
 
