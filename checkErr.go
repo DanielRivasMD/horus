@@ -13,27 +13,15 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // exitFunc is called by CheckErr to terminate the process.
-// You can override this in tests to capture the exit code.
+// Override in tests if you want to capture the exit code.
 var exitFunc = os.Exit
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-type CheckConfig struct {
-	Out       io.Writer
-	ExitCode  int
-	Formatter FormatterFunc
-}
-
-var exit = os.Exit
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Global error registry to track error types (by category).
+// errorTypeRegistry tracks how many errors of each Category have been seen.
 var errorTypeRegistry = make(map[string]int)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// RegisterError increments the count of errors for a given category.
+// RegisterError increments the count for this error’s category.
 func RegisterError(err error) {
 	if err == nil {
 		return
@@ -47,104 +35,113 @@ func RegisterError(err error) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// GetErrorRegistry returns a copy of the error type registry.
+// GetErrorRegistry returns a copy of the current error counts.
 func GetErrorRegistry() map[string]int {
-	copyRegistry := make(map[string]int)
-	for key, count := range errorTypeRegistry {
-		copyRegistry[key] = count
+	copyMap := make(map[string]int, len(errorTypeRegistry))
+	for k, v := range errorTypeRegistry {
+		copyMap[k] = v
 	}
-	return copyRegistry
+	return copyMap
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// checkOpt is a functional option that mutates checkParams.
+// checkOpt is the functional-option type for CheckErr.
 type checkOpt func(*checkParams)
 
-// checkParams holds all customizable fields for CheckErr.
-
+// checkParams holds all configurable values for CheckErr.
 type checkParams struct {
-	op       string
-	category string
-	message  string
-	details  map[string]any
-	writer   io.Writer
-	exitCode int
+	op        string
+	category  string
+	message   string
+	details   map[string]any
+	writer    io.Writer
+	exitCode  int
+	formatter FormatterFunc
 }
 
-// WithOp overrides the default operation name.
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// WithOp lets you override the operation name that CheckErr will wrap with.
 func WithOp(opName string) checkOpt {
 	return func(p *checkParams) {
 		p.op = opName
 	}
 }
 
-// WithCategory overrides the default error category.
+// WithCategory overrides the error category.
 func WithCategory(cat string) checkOpt {
 	return func(p *checkParams) {
 		p.category = cat
 	}
 }
 
-// WithMessage overrides the default user-facing message.
+// WithMessage overrides the user‐facing message.
 func WithMessage(msg string) checkOpt {
 	return func(p *checkParams) {
 		p.message = msg
 	}
 }
 
-// WithDetails overrides or augments the default metadata map.
+// WithDetails replaces the metadata map. If you want to merge instead of
+// replace, read your existing details with Details(err) first.
 func WithDetails(d map[string]any) checkOpt {
 	return func(p *checkParams) {
 		p.details = d
 	}
 }
 
-// WithWriter lets you redirect the output (for tests, etc).
+// WithWriter redirects the error output (defaults to stderr).
 func WithWriter(w io.Writer) checkOpt {
-	return func(c *checkParams) {
-		c.writer = w
+	return func(p *checkParams) {
+		p.writer = w
 	}
 }
 
-// WithExitCode lets you override the exit code.
+// WithExitCode sets a custom exit code (defaults to 1).
 func WithExitCode(code int) checkOpt {
-	return func(c *checkParams) {
-		c.exitCode = code
+	return func(p *checkParams) {
+		p.exitCode = code
+	}
+}
+
+// WithFormatter lets you choose any FormatterFunc (JSONFormatter, PlainFormatter,
+// your own custom FormatterFunc, etc). Defaults to PseudoJSONFormatter.
+func WithFormatter(f FormatterFunc) checkOpt {
+	return func(p *checkParams) {
+		p.formatter = f
 	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // CheckErr registers, wraps, formats and logs a fatal error via Horus.
-// On non-nil err it exits the process with code (default: 1).
+// If err is non-nil it prints using the configured FormatterFunc, then exits.
 func CheckErr(err error, opts ...checkOpt) {
 	if err == nil {
 		return
 	}
 
-	// 1) Metrics, instrumentation
+	// 1) metrics / instrumentation
 	RegisterError(err)
 
-	// 2) Default parameters
+	// 2) default parameters
 	cfg := checkParams{
-		op:       "check error",
-		category: "runtime_error",
-		message:  "An error occurred during execution",
-		details: map[string]any{
-			"severity": "critical",
-			"location": "checkErr",
-		},
-		writer:   os.Stderr,
-		exitCode: 1,
+		op:        "check error",
+		category:  "runtime_error",
+		message:   "An error occurred during execution",
+		details:   map[string]any{"severity": "critical", "location": "checkErr"},
+		writer:    os.Stderr,
+		exitCode:  1,
+		formatter: PseudoJSONFormatter,
 	}
 
-	// 3) Apply any overrides
+	// 3) apply user overrides
 	for _, opt := range opts {
 		opt(&cfg)
 	}
 
-	// 4) Build the rich Herror
+	// 4) build a rich *Herror
 	herr := NewCategorizedHerror(
 		cfg.op,
 		cfg.category,
@@ -153,17 +150,15 @@ func CheckErr(err error, opts ...checkOpt) {
 		cfg.details,
 	)
 
-	// 5) Format & print
-	//    We know NewCategorizedHerror always returns *Herror under the hood,
-	//    but we still AsHerror for safety.
+	// 5) format & print
 	if he, ok := AsHerror(herr); ok {
-		fmt.Fprintln(cfg.writer, PseudoJSONFormatter(he))
+		fmt.Fprintln(cfg.writer, cfg.formatter(he))
 	} else {
-		// fallback, should never happen
+		// shouldn't happen, but fallback to plain Error()
 		fmt.Fprintln(cfg.writer, herr.Error())
 	}
 
-	// 6) Exit
+	// 6) exit
 	exitFunc(cfg.exitCode)
 }
 
