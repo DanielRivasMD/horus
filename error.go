@@ -202,17 +202,36 @@ func WithDetail(err error, k string, v any) error {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Panic creates an Herror with context and a captured stack trace,
-// prints it with the same PseudoJSONFormatter that CheckErr uses,
-// then panics with the generated Herror.
-func Panic(op, msg string) {
-	// build the Herror (stack + op + msg, no underlying Err or details)
-	herr := newHerror(op, "", msg, nil, nil)
+// Panic creates an Herror with context, prints it via the same
+// PseudoJSONFormatter as CheckErr, then panics with the *Herror* itself.
+func Panic(err error, op, msg string) {
+	// use the public constructor so `Details` is at least an empty map
+	cfg := checkParams{
+		op:        op,
+		category:  "runtime_error",
+		message:   msg,
+		details:   map[string]any{"severity": "critical", "location": ""},
+		writer:    os.Stderr,
+		exitCode:  1,
+		formatter: PseudoJSONFormatter,
+	}
 
-	// format & print exactly the same way CheckErr would
-	fmt.Fprintln(os.Stderr, PseudoJSONFormatter(herr))
+	herr := NewCategorizedHerror(
+		cfg.op,
+		cfg.category,
+		cfg.message,
+		err,
+		cfg.details,
+	)
 
-	// unwind
+	if he, ok := AsHerror(herr); ok {
+		fmt.Fprintln(cfg.writer, cfg.formatter(he))
+	} else {
+		// shouldn't happen, but fallback to plain Error()
+		fmt.Fprintln(cfg.writer, herr.Error())
+	}
+
+	// now unwind
 	panic(herr)
 }
 
