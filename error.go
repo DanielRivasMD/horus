@@ -202,11 +202,17 @@ func WithDetail(err error, k string, v any) error {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Panic creates an Herror with context and a captured stack trace, logs the formatted message,
-// and then panics with the generated Herror.
+// Panic creates an Herror with context and a captured stack trace,
+// prints it with the same PseudoJSONFormatter that CheckErr uses,
+// then panics with the generated Herror.
 func Panic(op, msg string) {
+	// build the Herror (stack + op + msg, no underlying Err or details)
 	herr := newHerror(op, "", msg, nil, nil)
-	fmt.Fprintln(os.Stderr, FormatPanic(op, msg))
+
+	// format & print exactly the same way CheckErr would
+	fmt.Fprintln(os.Stderr, PseudoJSONFormatter(herr))
+
+	// unwind
 	panic(herr)
 }
 
