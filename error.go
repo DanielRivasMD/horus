@@ -202,21 +202,33 @@ func WithDetail(err error, k string, v any) error {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Panic creates an Herror with context, prints it via the same
-// PseudoJSONFormatter as CheckErr, then panics with the *Herror* itself.
-func Panic(err error, op, msg string) {
-	// use the public constructor so `Details` is at least an empty map
+// Panic wraps err into an *Herror*, prints it via the same FormatterFunc as CheckErr,
+// and then panics with that *Herror* as payload.
+func Panic(err error, opts ...checkOpt) {
+	if err == nil {
+		return
+	}
+
+	// 1) metrics / instrumentation
+	RegisterError(err)
+
+	// 2) default parameters (no exitCode here)
 	cfg := checkParams{
-		op:        op,
-		category:  "runtime_error",
-		message:   msg,
-		details:   map[string]any{"severity": "critical", "location": ""},
+		op:        "panic",
+		category:  "runtime_panic",
+		message:   "A fatal error occurred",
+		details:   map[string]any{"severity": "panic", "location": "Panic"},
 		writer:    os.Stderr,
-		exitCode:  1,
 		formatter: PseudoJSONFormatter,
 	}
 
-	herr := NewCategorizedHerror(
+	// 3) apply any overrides
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	// 4) build the *Herror*
+	herr := newHerror(
 		cfg.op,
 		cfg.category,
 		cfg.message,
@@ -224,14 +236,10 @@ func Panic(err error, op, msg string) {
 		cfg.details,
 	)
 
-	if he, ok := AsHerror(herr); ok {
-		fmt.Fprintln(cfg.writer, cfg.formatter(he))
-	} else {
-		// shouldn't happen, but fallback to plain Error()
-		fmt.Fprintln(cfg.writer, herr.Error())
-	}
+	// 5) format & print
+	fmt.Fprintln(cfg.writer, cfg.formatter(herr))
 
-	// now unwind
+	// 6) unwind with panic
 	panic(herr)
 }
 
