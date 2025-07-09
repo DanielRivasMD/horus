@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"runtime"
 	"strings"
 )
@@ -198,49 +197,6 @@ func WithDetail(err error, k string, v any) error {
 		return herr
 	}
 	return newHerror("unknown", "", err.Error(), err, map[string]any{k: v})
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Panic wraps err into an *Herror*, prints it via the same FormatterFunc as CheckErr,
-// and then panics with that *Herror* as payload.
-func Panic(err error, opts ...checkOpt) {
-	if err == nil {
-		return
-	}
-
-	// 1) metrics / instrumentation
-	RegisterError(err)
-
-	// 2) default parameters (no exitCode here)
-	cfg := checkParams{
-		op:        "panic",
-		category:  "runtime_panic",
-		message:   "A fatal error occurred",
-		details:   map[string]any{"severity": "panic", "location": "Panic"},
-		writer:    os.Stderr,
-		formatter: PseudoJSONFormatter,
-	}
-
-	// 3) apply any overrides
-	for _, opt := range opts {
-		opt(&cfg)
-	}
-
-	// 4) build the *Herror*
-	herr := newHerror(
-		cfg.op,
-		cfg.category,
-		cfg.message,
-		err,
-		cfg.details,
-	)
-
-	// 5) format & print
-	fmt.Fprintln(cfg.writer, cfg.formatter(herr))
-
-	// 6) unwind with panic
-	panic(herr)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
