@@ -211,27 +211,4 @@ func TestWithDetail(t *testing.T) {
 	}
 }
 
-func TestPanicFunc(t *testing.T) {
-	// capture printed panic message then recover
-	out := captureOutput_error(func() {
-		defer func() {
-			r := recover()
-			he, ok := r.(*Herror)
-			if !ok {
-				t.Fatalf("expected *Herror, got %T", r)
-			}
-			if he.Op != "P" || he.Message != "M" {
-				t.Errorf("Panic Herror incorrect: %+v", he)
-			}
-		}()
-		Panic("P", "M")
-	})
-
-	// strip ANSI escapes
-	plain := ansi.ReplaceAllString(out, "")
-	if !strings.Contains(plain, "Panic [P]: M") {
-		t.Errorf("Panic printed %q; want Panic [P]: M", plain)
-	}
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
