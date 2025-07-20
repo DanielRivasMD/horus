@@ -5,6 +5,7 @@ package horus
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -110,6 +111,22 @@ func WithExitCode(code int) checkOpt {
 func WithFormatter(f FormatterFunc) checkOpt {
 	return func(p *checkParams) {
 		p.formatter = f
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// CheckEmpty will call CheckErr if the given string is empty.
+//
+//	val     – the string to validate
+//	errMsg  – the error text to wrap (e.g. "`--script` is required")
+//	opts    – any CheckErr options (WithOp, WithMessage, etc.)
+func CheckEmpty(val, errMsg string, opts ...checkOpt) {
+	if val == "" {
+		CheckErr(
+			errors.New(errMsg),
+			opts...,
+		)
 	}
 }
 
