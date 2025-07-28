@@ -1,7 +1,9 @@
 # HORUS
 
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](LICENSE)
+[![Documentation](https://godoc.org/github.com/DanielRivasMD/horus?status.svg)](http://godoc.org/github.com/DanielRivasMD/horus)
 [![Go Report Card](https://goreportcard.com/badge/github.com/DanielRivasMD/horus)](https://goreportcard.com/report/github.com/DanielRivasMD/horus)
+[![Release](https://img.shields.io/github/release/DanielRivasMD/horus.svg?label=Release)](https://github.com/DanielRivasMD/horus/releases)
 [![Coverage Status](https://coveralls.io/repos/github/DanielRivasMD/horus/badge.svg?branch=main)](https://coveralls.io/github/DanielRivasMD/horus?branch=main)
 
 ## Overview
