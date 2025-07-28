@@ -1,7 +1,6 @@
 # HORUS
 
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](LICENSE)
-[![go Version](https://img.shields.io/badge/go-VERSION-green.svg)](LURL)
 
 ## Overview
 `horus` is a Go error‐handling toolkit that does more than “return an error”
@@ -74,20 +73,6 @@ resolved, err := act("user:123")
 - `Panic(op, msg)` logs a colored panic banner, captures a stack, then panics with a full `Herror` payload
 
 
-## Installation
-
-### **Language-Specific**
-| Language | Command                                                            |
-|----------|--------------------------------------------------------------------|
-| **Go**   | `go get github.com/DanielRivasMD/horus@latest`                     |
-
----
-
-## Usage
-```go
-import "github.com/DanielRivasMD/horus"
-```
-
 ## Quickstart
 
 ```go
@@ -124,7 +109,19 @@ func main() {
 }
 ```
 
-## Example
+## Installation
+
+### **Language-Specific**
+| Language | Command                                                            |
+|----------|--------------------------------------------------------------------|
+| **Go**   | `go get github.com/DanielRivasMD/horus@latest`                     |
+
+---
+
+## Usage
+```go
+import "github.com/DanielRivasMD/horus"
+```
 
 ### Error Handling Integration
 
@@ -424,13 +421,7 @@ cd horus
 |----------|------------------|----------------------|
 | Go       | `go >= 1.22`     | `air` (live reload)  |
 
----
-## FAQ
-Q: How to resolve?
-A: Use `horus.Wrap`, `horus.PropagateErr`, and `horus.CheckErr` for detailed context and troubleshooting
-
-Q: Cross-platform support?
-A: Yes, horus is designed to work seamlessly on Windows, macOS, and Linux
-
 ## License
-GPL [2025] [Daniel Rivas]
+Copyright (c) 2025
+
+See the [LICENSE](LICENSE) file for license details.
