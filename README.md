@@ -1,6 +1,8 @@
 # HORUS
 
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/DanielRivasMD/horus)](https://goreportcard.com/report/github.com/DanielRivasMD/horus)
+[![Coverage Status](https://coveralls.io/repos/github/DanielRivasMD/horus/badge.svg?branch=main)](https://coveralls.io/github/DanielRivasMD/horus?branch=main)
 
 ## Overview
 `horus` is a Go error‐handling toolkit that does more than “return an error”
