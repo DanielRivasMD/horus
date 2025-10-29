@@ -152,6 +152,7 @@ func NewCategorizedHerror(
 	return newHerror(op, category, msg, err, details)
 }
 
+// TODO: set the API for one-liner here
 // NewHerrorErrorf creates a new Herror with a formatted message.
 func NewHerrorErrorf(op, fmtStr string, args ...any) error {
 	return newHerror(op, "", fmt.Sprintf(fmtStr, args...), nil, nil)
