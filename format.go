@@ -137,3 +137,11 @@ func FormatPanic(op, message string) string {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// OneLineErr returns a bold, red version of the input string.
+// Useful for displaying a single‑line error message without the full Herror structure.
+func OneLineErr(er string) string {
+	return chalk.Bold.TextStyle(chalk.Red.Color(er))
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
