@@ -1,3 +1,36 @@
+strengths:
+- rich structured errors
+- composable & standards‑aware
+- flexible formatting
+- convenient utilities
+- test coverage
+
+weaknesses:
+- global mutable state
+- opinionated fatal exit
+- external dependency
+- duplication
+- fixed stack depth
+- pseudo‑JSON formatter assumptions
+
+usefulness:
+- command‑line tools
+- error categorization & metrics
+- goroutine‑safe error aggregation
+- helper functions
+
+enhancements:
+- concurrency safety
+- decouple exit behaviour
+- remove dependency
+- unify root‑cause functions
+- configurable stack depth
+- improve PseudoJSONFormatter
+- structured logging integration
+- panic recovery
+
+
+
 ==================================================
 error.go
   line 155    TODO   set the API for one-liner here
